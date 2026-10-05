@@ -1,6 +1,6 @@
 import type { CharacterDef } from './types';
 
-/** Kaze : ninja équilibré et mobile. */
+/** Kaze : ninja équilibré et mobile (tenue jaune). */
 export const kaze: CharacterDef = {
   id: 'kaze',
   name: 'Kaze',
@@ -35,5 +35,5 @@ export const kaze: CharacterDef = {
     },
   },
   grapple: { speed: 720, range: 165, zipSpeed: 470, pullSpeed: 520, hookDamage: 3, cooldown: 66 },
-  look: { body: '#2d2a3e', trim: '#e8e8f0', skin: '#f2c49b', scarf: '#ff4d4d' },
+  look: { body: '#2d2a3e', trim: '#e8e8f0', skin: '#f2c49b', scarf: '#ffcc33', sprite: 'ninja-jaune' },
 };
