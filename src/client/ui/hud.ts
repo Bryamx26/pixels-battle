@@ -56,7 +56,7 @@ export class Hud {
         };
         this.cards.set(f.id, c);
       }
-      const key = `${Math.floor(f.damage)}|${f.stocks}|${Math.round(f.guard / 5)}|${f.eliminated}|${f.connected}|${f.heldItem}`;
+      const key = `${Math.floor(f.damage)}|${f.stocks}|${Math.round(f.guard / 5)}|${f.eliminated}|${f.connected}|${f.heldItem}|${f.itemUses}`;
       if (key === c.last) continue;
       c.last = key;
       const dmg = Math.floor(f.damage);
@@ -74,7 +74,7 @@ export class Hud {
       c.bar.classList.toggle('low', g < 0.25);
       c.el.classList.toggle('out', f.eliminated);
       c.dc.style.color = f.connected ? '#ffe66d' : '';
-      c.dc.textContent = f.connected ? (f.heldItem ? `✦ ${getItemType(f.heldItem)?.name ?? ''}` : '') : '· déconnecté';
+      c.dc.textContent = f.connected ? (f.heldItem ? `✦ ${getItemType(f.heldItem)?.name ?? ''}${f.itemUses ? ` ×${f.itemUses}` : ''}` : '') : '· déconnecté';
     }
   }
 }

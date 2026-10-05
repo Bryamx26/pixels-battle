@@ -37,6 +37,22 @@ export interface ItemHit {
   guardDamage: number;
 }
 
+/** Explosion de zone (bombe) : déclenchée à l'impact ou à la fin de la mèche. */
+export interface ItemExplosion {
+  radius: number;
+  hit: ItemHit;
+}
+
+/** Bonus des attaques au corps à corps tant que l'objet est tenu (épée). */
+export interface MeleeBoost {
+  /** Allonge ajoutée à la hitbox (px). */
+  reach: number;
+  damage: number;
+  kbMul: number;
+  /** Nombre de coups portés avant que l'objet se brise. */
+  uses: number;
+}
+
 export abstract class ItemType {
   abstract readonly id: string;
   abstract readonly name: string;
@@ -52,6 +68,10 @@ export abstract class ItemType {
   readonly flightTicks: number = 60;
   /** Poids relatif dans le tirage des apparitions. */
   readonly spawnWeight: number = 1;
+  /** Si défini, l'objet explose au lieu de retomber. */
+  readonly explosion: ItemExplosion | null = null;
+  /** Si défini, l'objet renforce les attaques tant qu'il est tenu. */
+  readonly melee: MeleeBoost | null = null;
 
   /** Vitesse initiale lors d'un lancer dans la direction (unitaire) `dir`. */
   launch(item: ItemState, dir: { x: number; y: number }, thrower: Fighter): void {

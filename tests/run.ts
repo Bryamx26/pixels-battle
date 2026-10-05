@@ -222,8 +222,9 @@ const tap = (t: number, at: number, b: number) => (t === at ? b : 0);
   const a = w.fighter('a')!;
   const b = w.fighter('b')!;
   const ev = run(w, FIRST_SPAWN_TICKS);
-  check('un shuriken apparaît', s.items.length === 1 && ev.some((e) => e.type === 'itemSpawn'));
+  check('un objet apparaît', s.items.length === 1 && ev.some((e) => e.type === 'itemSpawn'));
   const item = s.items[0];
+  item.type = 'shuriken'; // le tirage est aléatoire : on fixe le type pour la suite
   run(w, 90); // il tombe sur une plateforme
   check('il retombe sur une plateforme', item.vy === 0 && w.arena.platforms.some((p) => p.y === item.y));
   a.x = item.x;
@@ -239,6 +240,47 @@ const tap = (t: number, at: number, b: number) => (t === at ? b : 0);
   const ev2 = run(w, 40, (t) => ({ a: t === 0 ? Btn.Throw | encodeAim(Math.atan2(-12 + 12, 130)) : 0 }));
   check('shuriken lancé touche l’adversaire', ev2.some((e) => e.type === 'hit' && e.slot === 'item') && b.damage === 8, `dmg=${b.damage}`);
   check('le shuriken retombe pour être repris', a.heldItem === null && s.items.length === 1 && s.items[0].phase === 'ground');
+}
+
+// 15. Bombe : explose au contact, dégâts de zone, disparaît.
+{
+  const w = makeWorld();
+  const s = w.state;
+  const a = w.fighter('a')!;
+  const b = w.fighter('b')!;
+  s.itemTimer = 1e6;
+  a.x = 200; a.y = 186; b.x = 260; b.y = 186; b.damage = 0;
+  a.heldItem = 'bomb';
+  run(w, 3);
+  const ev = run(w, 90, (t) => ({ a: t === 0 ? Btn.Throw | encodeAim(0) : 0 }));
+  check('la bombe explose', ev.some((e) => e.type === 'explosion'));
+  check('l’explosion blesse l’adversaire proche', b.damage === 14, `dmg=${b.damage}`);
+  check('la bombe disparaît après l’explosion', s.items.length === 0 && a.heldItem === null);
+  check('le lanceur est épargné', a.damage === 0);
+}
+
+// 16. Épée : allonge les coups, s'use et se brise.
+{
+  const w = makeWorld();
+  const s = w.state;
+  const a = w.fighter('a')!;
+  const b = w.fighter('b')!;
+  s.itemTimer = 1e6;
+  a.x = 200; a.y = 186; a.facing = 1; b.x = 236; b.y = 186; b.damage = 0;
+  run(w, 3);
+  run(w, 30, (t) => ({ a: tap(t, 0, Btn.Light) }));
+  check('sans épée, trop loin pour toucher', b.damage === 0);
+  a.heldItem = 'sword';
+  a.itemUses = 6;
+  a.x = 200; b.x = 236; b.y = 186;
+  run(w, 3);
+  run(w, 30, (t) => ({ a: tap(t, 0, Btn.Light) }));
+  check('avec l’épée, le même coup touche (+4 dégâts)', b.damage > 4 && a.itemUses === 5, `dmg=${b.damage} uses=${a.itemUses}`);
+  a.itemUses = 1;
+  b.x = a.x + 30; b.y = 186; b.vx = 0; b.vy = 0; b.action = 'free'; b.invuln = 0;
+  run(w, 3);
+  const ev = run(w, 30, (t) => ({ a: tap(t, 0, Btn.Light) }));
+  check('l’épée se brise au dernier coup', a.heldItem === null && ev.some((e) => e.type === 'itemBreak'));
 }
 
 console.log(failed ? `\n${failed} échec(s)` : '\nTous les tests passent.');

@@ -17,5 +17,7 @@ export type GameEvent =
   | { type: 'itemSpawn'; x: number; y: number; item: string }
   | { type: 'pickup'; x: number; y: number; target: string; item: string }
   | { type: 'throw'; x: number; y: number; attacker: string; item: string }
+  | { type: 'explosion'; x: number; y: number; radius: number }
+  | { type: 'itemBreak'; x: number; y: number; target: string; item: string }
   | { type: 'go' }
   | { type: 'end'; winnerTeam: number | null };

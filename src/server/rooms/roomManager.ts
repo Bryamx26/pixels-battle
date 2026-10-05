@@ -79,6 +79,12 @@ export class RoomManager {
         else console.log(`[room ${room.code}] combat lancé`);
         return;
       }
+      case 'rematch': {
+        if (!room) return;
+        const err = room.voteRematch(s.id);
+        if (err) fail(err);
+        return;
+      }
       case 'input':
         if (Array.isArray(msg.inputs)) room?.onInputs(s.id, msg.inputs.slice(0, 30));
         return;

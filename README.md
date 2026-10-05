@@ -52,9 +52,16 @@ Tests de la simulation : `npm test`. Vérification des types : `npm run typechec
 | E | Dash / esquive (sol et air, invulnérable au début) |
 | Échap | Pause / quitter |
 
-Les touches sont lues par position physique (`KeyboardEvent.code`) et se reconfigurent dans
-`src/client/input/keyboard.ts` (`DEFAULT_BINDINGS` et `MOUSE_BINDINGS`). La visée souris est
-encodée dans les entrées envoyées au serveur (256 directions), le serveur reste autoritaire.
+**Réglage des touches** : bouton **Commandes** dans le menu ou la pause. Chaque action accepte plusieurs
+entrées (clavier, souris ou manette) : « + » puis appuyer sur la touche voulue, clic sur une entrée pour la
+retirer. Les réglages sont gardés dans le navigateur. Les touches sont lues par position physique
+(`KeyboardEvent.code`) ; sur Chrome/Edge l'écran affiche la vraie lettre de ta disposition (Q en AZERTY).
+
+**Manette** (disposition standard Xbox/PlayStation) : stick gauche ou croix pour bouger, A / Croix ↑ saut,
+X attaque rapide, B coup de pied, RT grappin, Y lancer l'objet, LT garde, RB / LB dash, Start pause.
+La visée suit le stick droit (sinon le stick gauche) ; dès qu'on touche la manette le curseur souris disparaît.
+
+La visée (souris ou stick) est encodée dans les entrées envoyées au serveur (256 directions), le serveur reste autoritaire.
 
 ## Gameplay
 
@@ -68,7 +75,11 @@ encodée dans les entrées envoyées au serveur (256 directions), le serveur res
   - sur un **anneau** : tu es tiré vers lui (anneaux placés hors de l'arène pour revenir) ;
   - pendant la traction : Espace lâche la chaîne en gardant toute l'inertie, une attaque l'annule en gardant la vitesse ;
   - bloqué par la garde.
-- **Objets** : des shurikens apparaissent régulièrement dans l'arène (2 objets max en jeu). On en ramasse un en passant dessus, **un seul à la fois**. Lancé vers le curseur, il inflige dégâts et éjection (bloqué par la garde), puis retombe là où il a touché : il faut aller le rechercher.
+- **Objets** : des objets apparaissent régulièrement dans l'arène (2 max en jeu). On en ramasse un en passant dessus, **un seul à la fois**, et on le lance vers le curseur :
+  - **Shuriken** : trajectoire droite et rapide ; retombe là où il a touché, il faut aller le rechercher.
+  - **Bombe** : lancer en cloche, explose au contact (adversaire ou sol) ou au bout de 1,4 s ; dégâts de zone, sans toucher le lanceur ni ses alliés.
+  - **Épée** : tant qu'on la tient, les attaques ont plus d'allonge (+12 px), +4 dégâts et plus d'éjection ; elle se brise après 6 coups portés. On peut aussi la lancer.
+- **Revanche** : à la fin du combat, le bouton **Revanche** relance la même partie (mêmes réglages) dès que tous les joueurs connectés ont voté ; « Retour au salon » reste possible.
 - **Personnages** : Kaze (tenue jaune) et Mizu (identique, tenue bleue), animés à partir de la planche de sprites `tools/sprites/ninja-sheet.png`.
 - **Arènes** : Temple Céleste, Forge Jumelle, Ruines Flottantes.
 - **Modes** : 1v1, 2v2, chacun pour soi (jusqu'à 4).
@@ -83,7 +94,7 @@ src/
     characters/        état d'un combattant, machine à états (controller), définitions Kaze / Mizu
     combat/            attaques data-driven, hitbox, garde / parade, résolution des coups
     grapple/           kunai (vol, accroche, zip) et accroche d'ennemis (traction)
-    items/             classe ItemType (comportement d'un objet), Shuriken, système d'objets (apparition, ramassage, lancer, impact)
+    items/             classe ItemType (comportement d'un objet), Shuriken, Bombe, Épée, système d'objets (apparition, ramassage, lancer, impact)
     arenas/            une arène = un fichier de données (plateformes, anneaux, points d'apparition des objets)
     ai/                bot d'entraînement
     net/protocol.ts    messages client ↔ serveur
@@ -112,5 +123,5 @@ src/
 - **Personnage** : copier `src/shared/characters/kaze.ts`, ajuster les stats / attaques, l'ajouter dans `characters/index.ts`. `look.sprite` choisit la planche de sprites (sinon rendu procédural).
 - **Sprites** : `python3 tools/sprites/extract.py` (pillow, numpy, scipy) découpe `tools/sprites/ninja-sheet.png`, nettoie la palette et régénère les atlas jaune/bleu et `src/client/render/sprites/ninjaAtlas.ts`. Pour une nouvelle couleur, ajouter une fonction de recoloration comme `to_blue`.
 - **Arène** : copier `src/shared/arenas/skyTemple.ts`, définir plateformes, anneaux, spawns, couleurs, l'ajouter dans `arenas/index.ts`.
-- **Objet** : créer une sous-classe de `ItemType` (voir `src/shared/items/shuriken.ts`) en définissant dégâts, éjection, vitesse, gravité ; surcharger `launch` / `fly` pour un comportement spécial ; l'ajouter dans `items/index.ts`.
+- **Objet** : créer une sous-classe de `ItemType` (voir `src/shared/items/shuriken.ts`) en définissant dégâts, éjection, vitesse, gravité ; surcharger `launch` / `fly` pour un comportement spécial, ou renseigner `explosion` (dégâts de zone) / `melee` (bonus tenu en main) ; l'ajouter dans `items/index.ts`.
 - **Mode** : `MODES` et `teamForSlot` dans `src/shared/engine/rules.ts`.

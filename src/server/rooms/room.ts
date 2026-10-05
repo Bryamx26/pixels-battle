@@ -30,6 +30,8 @@ export class Room {
   world: World | null = null;
   private events: GameEvent[] = [];
   private endedAt = -1;
+  private rematchVotes = new Set<string>();
+  private matchNo = 0;
 
   constructor(
     public readonly code: string,
@@ -64,6 +66,7 @@ export class Room {
     const m = this.members.get(id);
     if (!m) return;
     this.members.delete(id);
+    this.rematchVotes.delete(id);
     m.session.roomCode = null;
     this.world?.eliminate(id);
     if (this.hostId === id) {
@@ -106,6 +109,26 @@ export class Room {
   start(by: string): string | null {
     if (by !== this.hostId) return "Seul l'hôte peut lancer le combat.";
     if (this.world) return 'Combat déjà en cours.';
+    return this.launch();
+  }
+
+  /**
+   * Revanche : chaque joueur vote depuis l'écran de résultats ; quand tous les
+   * joueurs connectés ont voté, un nouveau combat démarre avec les mêmes réglages.
+   */
+  voteRematch(id: string): string | null {
+    if (!this.members.has(id)) return null;
+    if (this.world && this.world.state.status !== 'ended') return 'Combat en cours.';
+    this.rematchVotes.add(id);
+    const connected = [...this.members.values()].filter((m) => m.session.connected);
+    if (connected.every((m) => this.rematchVotes.has(m.session.id)) && this.members.size >= MODES[this.mode].minPlayers) {
+      return this.launch();
+    }
+    this.broadcastInfo();
+    return null;
+  }
+
+  private launch(): string | null {
     const { minPlayers, maxPlayers } = MODES[this.mode];
     if (this.members.size < minPlayers) return `Il faut au moins ${minPlayers} joueurs pour ce mode.`;
     if (this.members.size > maxPlayers) return 'Trop de joueurs pour ce mode.';
@@ -126,6 +149,8 @@ export class Room {
     }
     this.events = [];
     this.endedAt = -1;
+    this.rematchVotes.clear();
+    this.matchNo++;
     this.broadcastInfo();
     this.broadcastSnapshot();
     return null;
@@ -192,7 +217,7 @@ export class Room {
         connected: m.session.connected,
         host: m.session.id === this.hostId,
       }));
-    return { code: this.code, mode: this.mode, arenaId: this.arenaId, phase: this.phase, players };
+    return { code: this.code, mode: this.mode, arenaId: this.arenaId, phase: this.phase, players, rematch: [...this.rematchVotes], matchNo: this.matchNo };
   }
 
   broadcast(msg: ServerMsg): void {

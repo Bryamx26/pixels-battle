@@ -10,7 +10,9 @@ import { Effects } from './effects';
 import { drawChain, drawFighter, drawLabel } from './fighterRenderer';
 import { playerColor } from './palette';
 import { drawText } from './pixelFont';
-import { drawItems } from './itemRenderer';
+import { drawItems, drawSwordSlash } from './itemRenderer';
+import { attackPhase, attackRect, attackTiming } from '../../shared/combat/attack';
+import { heldMelee } from '../../shared/items';
 
 /** Caméra : zoom doux sur les combattants (rendu natif puis agrandi au plus proche voisin). */
 const MAX_ZOOM = 1.45;
@@ -109,6 +111,18 @@ export class Renderer {
         case 'throw':
           this.fx.burst(e.x, e.y, 4, ['#d8d6ea'], 60, 0);
           break;
+        case 'explosion':
+          this.fx.burst(e.x, e.y, 28, ['#ffffff', '#ffe66d', '#ff9f43', '#ff4d4d'], 230, 120, 3);
+          this.fx.burst(e.x, e.y, 12, ['#6d6a85', '#3a3550'], 90, -40, 3);
+          this.fx.ring(e.x, e.y, '#ffe66d', e.radius / 9, 16);
+          this.fx.ring(e.x, e.y, '#ffffff', e.radius / 14, 10);
+          this.fx.popup(e.x, e.y - 20, 'BOUM!', '#ff9f43', 2);
+          this.fx.shake = Math.max(this.fx.shake, 7);
+          break;
+        case 'itemBreak':
+          this.fx.burst(e.x, e.y, 10, ['#d8d6ea', '#ffffff', '#ffd166'], 140);
+          this.fx.popup(e.x, e.y - 16, 'EPEE BRISEE', '#d8d6ea');
+          break;
         case 'go':
           this.goTimer = 50;
           break;
@@ -172,6 +186,13 @@ export class Renderer {
         time: this.time,
         flash: this.flashes.get(f.id) ?? 0,
       });
+    }
+    // Traînée de lame des coups d'épée.
+    for (const f of view.fighters) {
+      if (!heldMelee(f) || attackPhase(f) === null || attackPhase(f) === 'recovery') continue;
+      const t = attackTiming(f, getCharacter(f.charId).attacks[f.attack!]);
+      const progress = Math.min(1, Math.max(0, (f.actionTicks - t.startup + 2) / (t.active + 2)));
+      drawSwordSlash(ctx, attackRect(f)!, f.facing, progress);
     }
     this.fx.draw(ctx);
     ctx.setTransform(1, 0, 0, 1, 0, 0);

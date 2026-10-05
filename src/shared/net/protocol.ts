@@ -11,6 +11,8 @@ export type ClientMsg =
   | { t: 'config'; mode?: GameMode; arenaId?: string }
   | { t: 'character'; charId: string }
   | { t: 'start' }
+  /** Vote pour rejouer le même combat (mêmes réglages) une fois la partie finie. */
+  | { t: 'rematch' }
   | { t: 'input'; inputs: [seq: number, buttons: number][] }
   | { t: 'ping'; c: number };
 
@@ -29,6 +31,10 @@ export interface RoomInfo {
   mode: GameMode;
   arenaId: string;
   phase: 'lobby' | 'match';
+  /** Joueurs ayant voté pour une revanche. */
+  rematch: string[];
+  /** Numéro du combat (change à chaque lancement, revanche comprise). */
+  matchNo: number;
   players: LobbyPlayer[];
 }
 
