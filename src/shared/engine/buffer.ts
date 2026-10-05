@@ -2,7 +2,7 @@ import { Btn } from '../input';
 import type { Fighter } from '../characters/fighter';
 
 /** Boutons dont l'appui est mémorisé quelques ticks (contrôles plus tolérants). */
-const BUFFERABLE = Btn.Light | Btn.Medium | Btn.Heavy | Btn.Grapple | Btn.Dash | Btn.Up;
+const BUFFERABLE = Btn.Light | Btn.Medium | Btn.Grapple | Btn.Dash | Btn.Up | Btn.Throw;
 const BUFFER_TICKS = 7;
 
 export function feedBuffer(f: Fighter, pressed: number): void {

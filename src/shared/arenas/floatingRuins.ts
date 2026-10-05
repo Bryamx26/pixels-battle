@@ -23,6 +23,14 @@ export const floatingRuins: ArenaDef = {
     { x: 120, y: 160 },
     { x: 360, y: 160 },
   ],
+  itemSpawns: [
+    { x: 240, y: 90 },
+    { x: 145, y: 50 },
+    { x: 335, y: 50 },
+    { x: 120, y: 125 },
+    { x: 360, y: 125 },
+    { x: 240, y: 170 },
+  ],
   theme: {
     skyTop: '#0d2b45',
     skyBottom: '#5fb3b3',

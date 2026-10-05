@@ -148,8 +148,14 @@ export class OnlineMatch implements MatchSource {
       if (fa.grapple && fb.grapple) out.grapple = { ...fb.grapple, x: lerp(fa.grapple.x, fb.grapple.x, k), y: lerp(fa.grapple.y, fb.grapple.y, k) };
       return out;
     });
+    // Objets interpolés par identifiant (les nouveaux apparaissent à leur position).
+    const items = b.state.items.map((ib) => {
+      const ia = a.state.items.find((i) => i.uid === ib.uid);
+      if (!ia || ia.phase !== ib.phase) return ib;
+      return { ...ib, x: lerp(ia.x, ib.x, k), y: lerp(ia.y, ib.y, k) };
+    });
     const s = latest.state;
-    return { fighters, status: s.status, countdown: s.countdown, winnerTeam: s.winnerTeam, mode: s.mode };
+    return { fighters, items, status: s.status, countdown: s.countdown, winnerTeam: s.winnerTeam, mode: s.mode };
   }
 
   /** Les événements sont libérés au moment où l'image interpolée les atteint. */

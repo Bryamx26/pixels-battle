@@ -3,7 +3,8 @@
  * Chaque scénario pilote un World avec des entrées scriptées.
  */
 import { World } from '../src/shared/engine/world';
-import { Btn } from '../src/shared/input';
+import { Btn, encodeAim } from '../src/shared/input';
+import { FIRST_SPAWN_TICKS } from '../src/shared/items/itemSystem';
 import { COUNTDOWN_TICKS } from '../src/shared/constants';
 import type { GameEvent } from '../src/shared/engine/events';
 
@@ -81,21 +82,21 @@ const tap = (t: number, at: number, b: number) => (t === at ? b : 0);
   check('combo L→L→M', hits.length === 3 && hits[2].combo === 3, `hits=${hits.length} combo=${hits.at(-1)?.combo}`);
 }
 
-// 5. Attaque lourde à haut pourcentage → KO.
+// 5. Attaque moyenne à très haut pourcentage → KO ; à 0% non.
 {
   const w = makeWorld();
   const a = w.fighter('a')!;
   const b = w.fighter('b')!;
-  b.damage = 120;
+  b.damage = 200;
   b.x = a.x + 18;
-  const ev = run(w, 200, (t) => ({ a: tap(t, 0, Btn.Heavy) }));
-  check('lourde à 120% éjecte hors de l’arène', ev.some((e) => e.type === 'ko' && e.target === 'b') && b.stocks === 2, `stocks=${b.stocks}`);
+  const ev = run(w, 200, (t) => ({ a: tap(t, 0, Btn.Medium) }));
+  check('moyenne à 200% éjecte hors de l’arène', ev.some((e) => e.type === 'ko' && e.target === 'b') && b.stocks === 2, `stocks=${b.stocks}`);
   const w2 = makeWorld();
   const a2 = w2.fighter('a')!;
   const b2 = w2.fighter('b')!;
   b2.x = a2.x + 18;
-  const ev2 = run(w2, 200, (t) => ({ a: tap(t, 0, Btn.Heavy) }));
-  check('lourde à 0% ne tue pas', !ev2.some((e) => e.type === 'ko'));
+  const ev2 = run(w2, 200, (t) => ({ a: tap(t, 0, Btn.Medium) }));
+  check('moyenne à 0% ne tue pas', !ev2.some((e) => e.type === 'ko'));
 }
 
 // 6. Garde : blocage, puis garde parfaite.
@@ -184,6 +185,60 @@ const tap = (t: number, at: number, b: number) => (t === at ? b : 0);
   b.x = -200;
   run(w, 2);
   check('victoire quand il ne reste qu’une équipe', w.state.status === 'ended' && w.state.winnerTeam === 0);
+}
+
+// 12. Grappin visé à la souris : direction exacte, pas seulement 8 directions.
+{
+  const w = makeWorld();
+  const a = w.fighter('a')!;
+  w.step({ a: Btn.Grapple | encodeAim(-0.3) });
+  const g = a.grapple!;
+  check('grappin suit la visée souris', !!g && Math.abs(Math.atan2(g.vy, g.vx) - -0.3) < 0.03, g ? `angle=${Math.atan2(g.vy, g.vx).toFixed(2)}` : 'pas de kunai');
+}
+
+// 13. Espace pendant la traction : on lâche en gardant l'inertie.
+{
+  const w = makeWorld();
+  const a = w.fighter('a')!;
+  a.x = 80;
+  a.y = 230;
+  a.grounded = false;
+  a.airJumpsLeft = 0;
+  let t = 0;
+  w.step({ a: Btn.Grapple | encodeAim(-Math.PI / 4) });
+  while (a.action !== 'zip' && t++ < 20) w.step({});
+  w.step({});
+  w.step({});
+  const v = { x: a.vx, y: a.vy };
+  w.step({ a: Btn.Up });
+  check('Espace lâche le grappin', a.action === 'free' && a.grapple?.phase !== 'attached');
+  check('inertie conservée', Math.abs(a.vx - v.x) < 30 && Math.abs(a.vy - v.y) < 40 && a.airJumpsLeft === 0, `v=(${v.x.toFixed(0)},${v.y.toFixed(0)}) → (${a.vx.toFixed(0)},${a.vy.toFixed(0)})`);
+}
+
+// 14. Objets : apparition, ramassage (1 max), lancer sur l'adversaire.
+{
+  const w = makeWorld();
+  const s = w.state;
+  const a = w.fighter('a')!;
+  const b = w.fighter('b')!;
+  const ev = run(w, FIRST_SPAWN_TICKS);
+  check('un shuriken apparaît', s.items.length === 1 && ev.some((e) => e.type === 'itemSpawn'));
+  const item = s.items[0];
+  run(w, 90); // il tombe sur une plateforme
+  check('il retombe sur une plateforme', item.vy === 0 && w.arena.platforms.some((p) => p.y === item.y));
+  a.x = item.x;
+  a.y = item.y;
+  run(w, 3);
+  check('ramassé au contact', a.heldItem === 'shuriken' && s.items.length === 0);
+  s.items.push({ ...item, uid: 99, phase: 'ground', x: a.x, y: a.y });
+  run(w, 3);
+  check('un seul objet à la fois', a.heldItem === 'shuriken' && s.items.length === 1);
+  s.items = [];
+  a.x = 170; a.y = 186; b.x = 300; b.y = 186; b.damage = 0;
+  run(w, 5);
+  const ev2 = run(w, 40, (t) => ({ a: t === 0 ? Btn.Throw | encodeAim(Math.atan2(-12 + 12, 130)) : 0 }));
+  check('shuriken lancé touche l’adversaire', ev2.some((e) => e.type === 'hit' && e.slot === 'item') && b.damage === 8, `dmg=${b.damage}`);
+  check('le shuriken retombe pour être repris', a.heldItem === null && s.items.length === 1 && s.items[0].phase === 'ground');
 }
 
 console.log(failed ? `\n${failed} échec(s)` : '\nTous les tests passent.');

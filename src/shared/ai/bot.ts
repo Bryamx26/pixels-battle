@@ -1,4 +1,5 @@
-import { Btn } from '../input';
+import { Btn, encodeAim } from '../input';
+import type { ItemState } from '../items';
 import type { ArenaDef } from '../arenas/types';
 import { isAlive, type Fighter } from '../characters/fighter';
 
@@ -15,7 +16,7 @@ export class Bot {
     private level: 'dummy' | 'easy' = 'easy',
   ) {}
 
-  input(fighters: Fighter[], arena: ArenaDef): number {
+  input(fighters: Fighter[], arena: ArenaDef, items: ItemState[] = []): number {
     this.t++;
     const me = fighters.find((f) => f.id === this.id);
     if (!me || !isAlive(me) || this.level === 'dummy') return 0;
@@ -39,6 +40,17 @@ export class Bot {
     const dx = target.x - me.x;
     const dist = Math.abs(dx);
 
+    // Objets : lancer sur l'adversaire, ou aller chercher le plus proche.
+    if (me.heldItem && dist < 220 && this.t % 30 === 0) {
+      return Btn.Throw | encodeAim(Math.atan2(target.y - me.y, target.x - me.x));
+    }
+    const loot = !me.heldItem && items.find((i) => i.phase === 'ground' && Math.abs(i.x - me.x) < 160 && Math.abs(i.y - me.y) < 60);
+    if (loot && dist > 40) {
+      b |= loot.x > me.x ? Btn.Right : Btn.Left;
+      if (loot.y < me.y - 20 && me.grounded && this.t % 30 === 0) b |= Btn.Up;
+      return b;
+    }
+
     if (this.t % 90 === 0) this.plan = Math.floor(Math.random() * 4);
 
     // Garde quand l'adversaire prépare une attaque proche.
@@ -51,7 +63,7 @@ export class Bot {
     } else if (this.t % 16 === 0) {
       if (me.facing !== Math.sign(dx)) b |= dx > 0 ? Btn.Right : Btn.Left;
       const r = Math.random();
-      b |= r < 0.55 ? Btn.Light : r < 0.85 ? Btn.Medium : Btn.Heavy;
+      b |= r < 0.65 ? Btn.Light : Btn.Medium;
     }
     return b;
   }

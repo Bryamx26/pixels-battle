@@ -1,5 +1,8 @@
 import { DEFAULT_STOCKS, VIEW_H, VIEW_W } from '../shared/constants';
 import type { GameMode } from '../shared/engine/rules';
+import { encodeAim } from '../shared/input';
+import { handPos } from '../shared/characters/fighter';
+import { playerColor } from './render/palette';
 import type { RoomInfo, ServerMsg } from '../shared/net/protocol';
 import { GameLoop } from './engine/gameLoop';
 import { LocalMatch } from './game/localMatch';
@@ -18,7 +21,7 @@ const RESULTS_DELAY_MS = 1800;
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const stage = document.getElementById('stage')!;
 const hud = new Hud(document.getElementById('hud')!);
-const keyboard = new Keyboard();
+const keyboard = new Keyboard(canvas);
 
 /** Contrôleur de l'application : écrans, connexion, combat en cours. */
 class App {
@@ -227,12 +230,26 @@ class App {
     hud.clear();
     keyboard.clear();
     const renderer = new Renderer(canvas, match.arena, match.localId);
+    /** Boutons + visée souris (angle main → curseur, en coordonnées monde). */
+    const sampleInput = () => {
+      if (this.paused) return 0;
+      let b = keyboard.sample();
+      const me = this.lastView?.fighters.find((f) => f.id === match.localId);
+      if (keyboard.mouse && me) {
+        const w = renderer.toWorld(keyboard.mouse.x, keyboard.mouse.y);
+        const h = handPos(me);
+        b |= encodeAim(Math.atan2(w.y - h.y, w.x - h.x));
+      }
+      return b;
+    };
     this.loop = new GameLoop(
-      () => match.tick(this.paused ? 0 : keyboard.sample()),
+      () => match.tick(sampleInput()),
       (alpha) => {
         const view = match.view(alpha);
         if (!view) return;
         this.lastView = view;
+        const me = view.fighters.find((f) => f.id === match.localId);
+        renderer.cursor = keyboard.mouse && me && !this.paused ? { ...keyboard.mouse, color: playerColor(me, view.mode) } : null;
         renderer.render(view, match.drainEvents());
         hud.update(view.fighters, view.mode, match.localId, DEFAULT_STOCKS);
         if (view.status === 'ended' && !this.endHandled) {

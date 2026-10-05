@@ -4,11 +4,19 @@ import { getCharacter } from '../characters';
 import type { GameEvent } from '../engine/events';
 import { attackPhase, attackRect } from './attack';
 import { PERFECT_GUARD_TICKS, breakGuard } from './guard';
-import type { AttackDef } from './types';
 
 const PARRY_STUN = 30;
 const HITSTUN_BASE = 8;
 const HITSTUN_PER_KB = 0.035;
+
+/** Ce qui suffit pour éjecter un combattant (attaque ou objet). */
+export interface HitProps {
+  damage: number;
+  baseKb: number;
+  kbGrowth: number;
+  angle: number;
+  guardDamage: number;
+}
 
 /** Résout toutes les hitbox actives contre les hurtbox ennemies. */
 export function resolveAttackHits(fighters: Fighter[], events: GameEvent[]): void {
@@ -20,43 +28,52 @@ export function resolveAttackHits(fighters: Fighter[], events: GameEvent[]): voi
       if (!areEnemies(a, t) || !isAlive(t) || t.invuln > 0 || a.hitIds.includes(t.id)) continue;
       if (!rectsOverlap(hb, hurtbox(t))) continue;
       a.hitIds.push(t.id);
-      applyHit(a, t, def, events);
-      if (a.action !== 'attack') break; // contré par une garde parfaite
+      const x = (a.x + t.x) / 2;
+      const y = t.y - 12;
+      if (t.action === 'guard' && t.guardTicks <= PERFECT_GUARD_TICKS) {
+        parry(a, t, x, y, events);
+        break;
+      }
+      if (t.action === 'guard') {
+        blockHit(t, def.guardDamage, a.facing, x, y, events);
+        a.vx = -a.facing * 50;
+        continue;
+      }
+      const kb = launchFighter(t, def, a.facing, a.id, events);
+      a.attackHit = true;
+      events.push({ type: 'hit', x, y, attacker: a.id, target: t.id, slot: def.slot, power: kb, combo: t.combo });
     }
   }
 }
 
-function applyHit(a: Fighter, t: Fighter, def: AttackDef, events: GameEvent[]): void {
-  const x = (a.x + t.x) / 2;
-  const y = t.y - 12;
+/** Garde parfaite : l'attaquant est étourdi, le défenseur peut contre-attaquer. */
+function parry(a: Fighter, t: Fighter, x: number, y: number, events: GameEvent[]): void {
+  a.action = 'hitstun';
+  a.attack = null;
+  a.stun = PARRY_STUN;
+  a.vx = -a.facing * 90;
+  t.action = 'free';
+  t.guard = Math.min(GUARD_MAX, t.guard + 15);
+  events.push({ type: 'parry', x, y, target: t.id, attacker: a.id });
+}
 
-  if (t.action === 'guard') {
-    if (t.guardTicks <= PERFECT_GUARD_TICKS) {
-      // Garde parfaite : l'attaquant est étourdi, le défenseur peut contre-attaquer.
-      a.action = 'hitstun';
-      a.attack = null;
-      a.stun = PARRY_STUN;
-      a.vx = -a.facing * 90;
-      t.action = 'free';
-      t.guard = Math.min(GUARD_MAX, t.guard + 15);
-      events.push({ type: 'parry', x, y, target: t.id, attacker: a.id });
-      return;
-    }
-    t.guard -= def.guardDamage;
-    t.vx = a.facing * (60 + def.guardDamage * 2);
-    a.vx = -a.facing * 50;
-    events.push({ type: 'block', x, y, target: t.id });
-    if (t.guard <= 0) {
-      breakGuard(t);
-      events.push({ type: 'guardbreak', x, y, target: t.id });
-    }
-    return;
+/** Coup bloqué par la garde (peut la briser). */
+export function blockHit(t: Fighter, guardDamage: number, dirX: number, x: number, y: number, events: GameEvent[]): void {
+  t.guard -= guardDamage;
+  t.vx = dirX * (60 + guardDamage * 2);
+  events.push({ type: 'block', x, y, target: t.id });
+  if (t.guard <= 0) {
+    breakGuard(t);
+    events.push({ type: 'guardbreak', x, y, target: t.id });
   }
+}
 
-  t.damage = Math.min(999, t.damage + def.damage);
-  const kb = (def.baseKb + t.damage * def.kbGrowth) * getCharacter(t.charId).kbTaken;
-  const ang = (def.angle * Math.PI) / 180;
-  t.vx = Math.cos(ang) * kb * a.facing;
+/** Applique dégâts + knockback + hitstun. Retourne la force d'éjection (px/s). */
+export function launchFighter(t: Fighter, hit: HitProps, dirX: number, sourceId: string | null, _events: GameEvent[]): number {
+  t.damage = Math.min(999, t.damage + hit.damage);
+  const kb = (hit.baseKb + t.damage * hit.kbGrowth) * getCharacter(t.charId).kbTaken;
+  const ang = (hit.angle * Math.PI) / 180;
+  t.vx = Math.cos(ang) * kb * dirX;
   t.vy = -Math.sin(ang) * kb;
   if (t.grounded && t.vy > -150) t.vy = -150;
   t.grounded = false;
@@ -67,8 +84,7 @@ function applyHit(a: Fighter, t: Fighter, def: AttackDef, events: GameEvent[]): 
   t.attack = null;
   t.fastFalling = false;
   t.hookedBy = null;
-  t.lastHitBy = a.id;
+  if (sourceId) t.lastHitBy = sourceId;
   if (t.grapple && t.grapple.phase !== 'retract') t.grapple.phase = 'retract';
-  a.attackHit = true;
-  events.push({ type: 'hit', x, y, attacker: a.id, target: t.id, slot: def.slot, power: kb, combo: t.combo });
+  return kb;
 }

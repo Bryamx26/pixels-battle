@@ -5,6 +5,8 @@ import { stepFighter } from '../characters/controller';
 import { resolveAttackHits } from '../combat/hits';
 import { resolveGrappleHits, updateHooks } from '../grapple/hook';
 import type { GameEvent } from './events';
+import type { ItemState } from '../items';
+import { FIRST_SPAWN_TICKS, updateItems } from '../items/itemSystem';
 import { checkBlastZones, checkWinner, knockOut, type GameMode } from './rules';
 
 export type MatchStatus = 'countdown' | 'playing' | 'ended';
@@ -17,6 +19,10 @@ export interface WorldState {
   arenaId: string;
   mode: GameMode;
   fighters: Fighter[];
+  items: ItemState[];
+  itemTimer: number;
+  itemUid: number;
+  seed: number;
   winnerTeam: number | null;
 }
 
@@ -42,6 +48,10 @@ export class World {
       arenaId: this.arena.id,
       mode,
       fighters: players.map((p) => createFighter(p, this.arena.spawns[p.slot % this.arena.spawns.length], stocks)),
+      items: [],
+      itemTimer: FIRST_SPAWN_TICKS,
+      itemUid: 0,
+      seed: (Math.random() * 2 ** 32) >>> 0,
       winnerTeam: null,
     };
   }
@@ -63,6 +73,7 @@ export class World {
     resolveGrappleHits(s.fighters, this.events);
     updateHooks(s.fighters);
     resolveAttackHits(s.fighters, this.events);
+    if (live) updateItems(s, this.arena, inputs, this.events);
     checkBlastZones(s.fighters, this.arena, this.events);
 
     if (s.status === 'playing') {

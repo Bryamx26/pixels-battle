@@ -10,6 +10,7 @@ import { Effects } from './effects';
 import { drawChain, drawFighter, drawLabel } from './fighterRenderer';
 import { playerColor } from './palette';
 import { drawText } from './pixelFont';
+import { drawItems } from './itemRenderer';
 
 /** Caméra : zoom doux sur les combattants (rendu natif puis agrandi au plus proche voisin). */
 const MAX_ZOOM = 1.45;
@@ -27,6 +28,9 @@ export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private out: CanvasRenderingContext2D;
   private cam = { x: VIEW_W / 2, y: VIEW_H / 2, zoom: 1 };
+  private view = { x: 0, y: 0, w: VIEW_W, h: VIEW_H };
+  /** Curseur souris (coordonnées normalisées du canvas) pour le réticule. */
+  cursor: { x: number; y: number; color: string } | null = null;
   private bg: HTMLCanvasElement;
   private fx = new Effects();
   private time = 0;
@@ -54,7 +58,7 @@ export class Renderer {
     for (const e of events) {
       switch (e.type) {
         case 'hit': {
-          const heavy = e.slot === 'heavy';
+          const heavy = e.power > 330;
           const a = byId.get(e.attacker);
           const dir = a ? a.facing : 1;
           this.fx.burst(e.x, e.y, heavy ? 16 : 8, ['#ffffff', '#ffe66d', '#ff9f43'], heavy ? 200 : 120);
@@ -95,6 +99,16 @@ export class Renderer {
           this.fx.shake = 9;
           break;
         }
+        case 'itemSpawn':
+          this.fx.ring(e.x, e.y, this.arena.theme.accent, 1.2, 18);
+          this.fx.burst(e.x, e.y, 8, [this.arena.theme.accent, '#ffffff'], 70, 0);
+          break;
+        case 'pickup':
+          this.fx.ring(e.x, e.y - 6, '#ffffff', 1.5, 10);
+          break;
+        case 'throw':
+          this.fx.burst(e.x, e.y, 4, ['#d8d6ea'], 60, 0);
+          break;
         case 'go':
           this.goTimer = 50;
           break;
@@ -135,6 +149,7 @@ export class Renderer {
     drawAnchors(ctx, this.arena, this.time);
 
     for (const f of view.fighters) drawChain(ctx, f, playerColor(f, view.mode));
+    drawItems(ctx, view.items, this.time, this.arena.theme.accent);
 
     // Images fantômes (dash, zip, grosse éjection).
     for (const f of view.fighters) {
@@ -162,6 +177,7 @@ export class Renderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     const r = this.updateCamera(view);
+    this.view = r;
     this.out.drawImage(ctx.canvas, r.x, r.y, r.w, r.h, 0, 0, VIEW_W, VIEW_H);
     for (const f of order) {
       if (f.action === 'dead' || f.eliminated) continue;
@@ -171,6 +187,28 @@ export class Renderer {
     }
     this.drawOffscreen(view, r);
     this.drawCenterText(view);
+    this.drawCursor();
+  }
+
+  /** Convertit une position souris (0..1 sur le canvas) en coordonnées monde. */
+  toWorld(nx: number, ny: number): { x: number; y: number } {
+    return { x: this.view.x + nx * this.view.w, y: this.view.y + ny * this.view.h };
+  }
+
+  private drawCursor() {
+    if (!this.cursor) return;
+    const ctx = this.out;
+    const x = Math.round(this.cursor.x * VIEW_W);
+    const y = Math.round(this.cursor.y * VIEW_H);
+    for (const [c, o] of [['#000', 1], [this.cursor.color, 0]] as const) {
+      ctx.fillStyle = c;
+      ctx.fillRect(x - 5 + o, y + o, 3, 1);
+      ctx.fillRect(x + 3 + o, y + o, 3, 1);
+      ctx.fillRect(x + o, y - 5 + o, 1, 3);
+      ctx.fillRect(x + o, y + 3 + o, 1, 3);
+    }
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x, y, 1, 1);
   }
 
   /** Cadre la zone qui contient tous les combattants vivants. */

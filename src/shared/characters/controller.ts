@@ -1,6 +1,6 @@
 import { approach } from '../math';
 import { DT, RESPAWN_INVULN_TICKS } from '../constants';
-import { Btn, has, inputDir } from '../input';
+import { BUTTON_MASK, Btn, has, inputDir } from '../input';
 import type { ArenaDef } from '../arenas/types';
 import { applyGravity, integrate } from '../physics/body';
 import { feedBuffer, consume, buffered } from '../engine/buffer';
@@ -23,8 +23,10 @@ const HITSTUN_AIR_DRAG = 0.985;
  * client rejoue pour prédire son propre mouvement. Tout ce qui implique deux
  * combattants (coups, kunai sur un ennemi, KO) est résolu par World.
  */
-export function stepFighter(f: Fighter, buttons: number, arena: ArenaDef): void {
+export function stepFighter(f: Fighter, input: number, arena: ArenaDef): void {
   const ch = getCharacter(f.charId);
+  // `input` = boutons + visée encodée (bits hauts), utilisée par le grappin.
+  const buttons = input & BUTTON_MASK;
   const pressed = buttons & ~f.prevButtons;
   f.prevButtons = buttons;
   if (f.eliminated) return;
@@ -46,10 +48,10 @@ export function stepFighter(f: Fighter, buttons: number, arena: ArenaDef): void 
 
   switch (f.action) {
     case 'free':
-      updateFree(f, ch, buttons, pressed, dx);
+      updateFree(f, ch, input, pressed, dx);
       break;
     case 'attack':
-      updateAttack(f, ch, buttons, dx);
+      updateAttack(f, ch, input, dx);
       break;
     case 'dash':
       gravity = updateDash(f, ch);
@@ -200,6 +202,7 @@ export function respawn(f: Fighter, arena: ArenaDef): void {
   f.guard = GUARD_MAX;
   f.grapple = null;
   f.grappleCooldown = 0;
+  f.heldItem = null;
   f.lastHitBy = null;
   f.hookedBy = null;
   f.stun = 0;

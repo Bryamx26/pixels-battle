@@ -34,6 +34,7 @@ html, body {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   background: #000;
+  cursor: none; /* réticule dessiné dans le canvas */
   box-shadow: 0 0 0 4px #000, 0 0 0 8px var(--line);
 }
 

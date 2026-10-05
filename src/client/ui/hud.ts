@@ -1,6 +1,7 @@
 import type { Fighter } from '../../shared/characters/fighter';
 import { GUARD_MAX } from '../../shared/characters/fighter';
 import { getCharacter } from '../../shared/characters';
+import { getItemType } from '../../shared/items';
 import type { GameMode } from '../../shared/engine/rules';
 import { playerColor } from '../render/palette';
 
@@ -55,7 +56,7 @@ export class Hud {
         };
         this.cards.set(f.id, c);
       }
-      const key = `${Math.floor(f.damage)}|${f.stocks}|${Math.round(f.guard / 5)}|${f.eliminated}|${f.connected}`;
+      const key = `${Math.floor(f.damage)}|${f.stocks}|${Math.round(f.guard / 5)}|${f.eliminated}|${f.connected}|${f.heldItem}`;
       if (key === c.last) continue;
       c.last = key;
       const dmg = Math.floor(f.damage);
@@ -72,7 +73,8 @@ export class Hud {
       c.bar.style.width = `${g * 100}%`;
       c.bar.classList.toggle('low', g < 0.25);
       c.el.classList.toggle('out', f.eliminated);
-      c.dc.textContent = f.connected ? '' : '· déconnecté';
+      c.dc.style.color = f.connected ? '#ffe66d' : '';
+      c.dc.textContent = f.connected ? (f.heldItem ? `✦ ${getItemType(f.heldItem)?.name ?? ''}` : '') : '· déconnecté';
     }
   }
 }
