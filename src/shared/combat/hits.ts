@@ -4,6 +4,7 @@ import { getCharacter } from '../characters';
 import type { GameEvent } from '../engine/events';
 import { attackPhase, attackRect } from './attack';
 import { PERFECT_GUARD_TICKS, breakGuard } from './guard';
+import { heldMelee } from '../items';
 
 const PARRY_STUN = 30;
 const HITSTUN_BASE = 8;
@@ -23,7 +24,10 @@ export function resolveAttackHits(fighters: Fighter[], events: GameEvent[]): voi
   for (const a of fighters) {
     if (attackPhase(a) !== 'active' || !isAlive(a)) continue;
     const hb = attackRect(a)!;
-    const def = getCharacter(a.charId).attacks[a.attack!];
+    const base = getCharacter(a.charId).attacks[a.attack!];
+    const m = heldMelee(a);
+    const def = m ? { ...base, damage: base.damage + m.damage, baseKb: base.baseKb * m.kbMul, guardDamage: base.guardDamage + 8 } : base;
+    let landed = false;
     for (const t of fighters) {
       if (!areEnemies(a, t) || !isAlive(t) || t.invuln > 0 || a.hitIds.includes(t.id)) continue;
       if (!rectsOverlap(hb, hurtbox(t))) continue;
@@ -37,13 +41,24 @@ export function resolveAttackHits(fighters: Fighter[], events: GameEvent[]): voi
       if (t.action === 'guard') {
         blockHit(t, def.guardDamage, a.facing, x, y, events);
         a.vx = -a.facing * 50;
+        landed = true;
         continue;
       }
       const kb = launchFighter(t, def, a.facing, a.id, events);
       a.attackHit = true;
       events.push({ type: 'hit', x, y, attacker: a.id, target: t.id, slot: def.slot, power: kb, combo: t.combo });
+      landed = true;
     }
+    if (landed && m) wearItem(a, events);
   }
+}
+
+/** Un coup porté avec l'épée l'use ; elle se brise au dernier. */
+function wearItem(a: Fighter, events: GameEvent[]): void {
+  if (--a.itemUses > 0) return;
+  events.push({ type: 'itemBreak', x: a.x + a.facing * 8, y: a.y - 12, target: a.id, item: a.heldItem! });
+  a.heldItem = null;
+  a.itemUses = 0;
 }
 
 /** Garde parfaite : l'attaquant est étourdi, le défenseur peut contre-attaquer. */

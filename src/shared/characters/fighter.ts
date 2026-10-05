@@ -85,6 +85,8 @@ export interface Fighter {
   grappleCooldown: number;
   /** Objet tenu (id de type), un seul à la fois. */
   heldItem: string | null;
+  /** Coups restants avant que l'objet tenu se brise (épée). */
+  itemUses: number;
 
   /** Buffer d'entrées : les appuis restent valides quelques ticks. */
   bufBtns: number;
@@ -144,6 +146,7 @@ export function createFighter(s: FighterSpawn, spawn: { x: number; y: number }, 
     grapple: null,
     grappleCooldown: 0,
     heldItem: null,
+    itemUses: 0,
     bufBtns: 0,
     bufTicks: 0,
     prevButtons: 0,

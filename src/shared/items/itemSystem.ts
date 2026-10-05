@@ -73,6 +73,7 @@ function throwHeld(w: ItemWorld, inputs: Record<string, number>, events: GameEve
     type.launch(item, dir, f);
     w.items.push(item);
     f.heldItem = null;
+    f.itemUses = 0;
     events.push({ type: 'throw', x: h.x, y: h.y, attacker: f.id, item: type.id });
   }
 }
@@ -108,6 +109,7 @@ function updateThrown(w: ItemWorld, item: ItemState, arena: ArenaDef, events: Ga
     if (!isAlive(t) || t.invuln > 0 || t.id === item.owner) continue;
     if (owner && !areEnemies(owner, t)) continue;
     if (segmentRect(item.px, item.py, item.x, item.y, hurtbox(t)) < 0) continue;
+    if (type.explosion) return explode(w, item, events);
     const dirX = item.vx >= 0 ? 1 : -1;
     if (t.action === 'guard') blockHit(t, type.hit.guardDamage, dirX, item.x, item.y, events);
     else {
@@ -118,15 +120,45 @@ function updateThrown(w: ItemWorld, item: ItemState, arena: ArenaDef, events: Ga
   }
 
   for (const p of arena.platforms) {
-    if (p.kind !== 'solid') continue;
-    const k = segmentRect(item.px, item.py, item.x, item.y, p);
+    // Les plateformes fines n'arrêtent qu'un objet qui retombe dessus.
+    if (p.kind !== 'solid' && !(item.vy > 0 && item.py <= p.y && item.y >= p.y && item.x >= p.x && item.x <= p.x + p.w)) continue;
+    const k = p.kind === 'solid' ? segmentRect(item.px, item.py, item.x, item.y, p) : (p.y - item.py) / (item.y - item.py || 1);
     if (k >= 0) {
       item.x = item.px + (item.x - item.px) * k;
       item.y = item.py + (item.y - item.py) * k;
+      if (type.explosion) return explode(w, item, events);
       return drop(item);
     }
   }
-  if (item.ticks >= type.flightTicks) drop(item, false);
+  if (item.ticks >= type.flightTicks) {
+    if (type.explosion) return explode(w, item, events);
+    drop(item, false);
+  }
+}
+
+/** Explosion de zone : éjecte les ennemis du lanceur loin du centre, puis l'objet disparaît. */
+function explode(w: ItemWorld, item: ItemState, events: GameEvent[]): void {
+  const ex = getItemType(item.type).explosion!;
+  const owner = w.fighters.find((f) => f.id === item.owner);
+  events.push({ type: 'explosion', x: item.x, y: item.y, radius: ex.radius });
+  for (const t of w.fighters) {
+    if (!isAlive(t) || t.invuln > 0 || t.id === item.owner) continue;
+    if (owner && !areEnemies(owner, t)) continue;
+    const c = bodyCenter(t);
+    const dx = c.x - item.x;
+    const dy = c.y - item.y;
+    if (Math.hypot(dx, dy) > ex.radius + 6) continue;
+    const dirX = dx === 0 ? (item.vx >= 0 ? 1 : -1) : Math.sign(dx);
+    if (t.action === 'guard') {
+      blockHit(t, ex.hit.guardDamage, dirX, c.x, c.y, events);
+      continue;
+    }
+    // Plus la cible est au-dessus du centre, plus l'éjection est verticale.
+    const angle = Math.max(25, Math.min(80, (Math.atan2(-dy, Math.abs(dx)) * 180) / Math.PI + ex.hit.angle * 0.6));
+    const kb = launchFighter(t, { ...ex.hit, angle }, dirX, item.owner, events);
+    events.push({ type: 'hit', x: c.x, y: c.y, attacker: item.owner ?? '', target: t.id, slot: 'item', power: kb, combo: t.combo });
+  }
+  remove(w, item);
 }
 
 function updateGround(w: ItemWorld, item: ItemState, arena: ArenaDef): void {
@@ -157,6 +189,7 @@ function pickup(w: ItemWorld, events: GameEvent[]): void {
     const item = w.items.find((i) => i.phase === 'ground' && Math.hypot(i.x - c.x, i.y - 3 - c.y) < PICKUP_DIST);
     if (!item) continue;
     f.heldItem = item.type;
+    f.itemUses = getItemType(item.type).melee?.uses ?? 0;
     remove(w, item);
     events.push({ type: 'pickup', x: item.x, y: item.y, target: f.id, item: item.type });
   }

@@ -31,6 +31,8 @@ class App {
   private conn: Connection | null = null;
   private pendingAction: (() => void) | null = null;
   private room: RoomInfo | null = null;
+  /** Numéro du combat en ligne affiché (détecte le lancement d'une revanche). */
+  private matchNo = -1;
   match: MatchSource | null = null;
   private matchKind: 'online' | 'local' | null = null;
   private loop: GameLoop | null = null;
@@ -141,12 +143,16 @@ class App {
       }
       return;
     }
-    if (room.phase === 'match') {
-      if (this.matchKind !== 'online') this.startOnline(room);
+    if (room.phase === 'match' && (this.matchKind !== 'online' || room.matchNo !== this.matchNo)) {
+      this.startOnline(room);
       return;
     }
+    if (this.screen === 'results') {
+      ui.setRematchVotes(room.rematch.length, room.players.filter((p) => p.connected).length, room.rematch.includes(this.conn?.playerId ?? ''));
+      return;
+    }
+    if (room.phase === 'match') return;
     // Retour au salon : on laisse l'écran de résultats affiché jusqu'au clic.
-    if (this.screen === 'results') return;
     if (this.screen === 'game' && this.lastView?.status === 'ended') return;
     if (this.matchKind === 'online') this.stopMatch();
     this.showLobby();
@@ -166,6 +172,10 @@ class App {
           this.saveName(name);
           this.training = { arenaId, charId, level };
           this.startLocal();
+        },
+        controls: (name) => {
+          this.saveName(name);
+          ui.showControls(() => this.showMenu());
         },
       },
       { name: this.storedName(), code },
@@ -202,6 +212,10 @@ class App {
         }
         this.showMenu();
       },
+      () => ui.showControls(() => {
+        this.paused = false;
+        this.togglePause();
+      }),
     );
   }
 
@@ -209,6 +223,7 @@ class App {
 
   private startOnline(room: RoomInfo) {
     this.stopMatch();
+    this.matchNo = room.matchNo;
     this.match = new OnlineMatch(this.conn!, this.conn!.playerId!, room.arenaId);
     this.matchKind = 'online';
     this.runMatch();
@@ -235,10 +250,12 @@ class App {
     const renderer = new Renderer(canvas, match.arena, match.localId);
     /** Boutons + visée souris (angle main → curseur, en coordonnées monde). */
     const sampleInput = () => {
+      let b = keyboard.sample(); // lu même en pause (bouton Start de la manette)
       if (this.paused) return 0;
-      let b = keyboard.sample();
       const me = this.lastView?.fighters.find((f) => f.id === match.localId);
-      if (keyboard.mouse && me) {
+      if (keyboard.device === 'pad') {
+        if (keyboard.padAim !== null) b |= encodeAim(keyboard.padAim);
+      } else if (keyboard.mouse && me) {
         const w = renderer.toWorld(keyboard.mouse.x, keyboard.mouse.y);
         const h = handPos(me);
         b |= encodeAim(Math.atan2(w.y - h.y, w.x - h.x));
@@ -246,13 +263,19 @@ class App {
       return b;
     };
     this.loop = new GameLoop(
-      () => match.tick(sampleInput()),
+      () => {
+        if (keyboard.padStart) {
+          keyboard.padStart = false;
+          if (this.screen === 'game') this.togglePause();
+        }
+        match.tick(sampleInput());
+      },
       (alpha) => {
         const view = match.view(alpha);
         if (!view) return;
         this.lastView = view;
         const me = view.fighters.find((f) => f.id === match.localId);
-        renderer.cursor = keyboard.mouse && me && !this.paused ? { ...keyboard.mouse, color: playerColor(me, view.mode) } : null;
+        renderer.cursor = keyboard.mouse && keyboard.device === 'mouse' && me && !this.paused ? { ...keyboard.mouse, color: playerColor(me, view.mode) } : null;
         renderer.render(view, match.drainEvents());
         hud.update(view.fighters, view.mode, match.localId, DEFAULT_STOCKS);
         if (view.status === 'ended' && !this.endHandled) {
@@ -269,12 +292,20 @@ class App {
     if (!v || !this.match || this.screen !== 'game') return;
     this.screen = 'results';
     const local = this.matchKind === 'local';
-    ui.showResults(v.fighters, v.winnerTeam, this.match.localId, local ? 'Rejouer' : 'Retour au salon', () => {
+    const back = () => {
       this.stopMatch();
-      if (local) this.startLocal();
+      if (local) this.showMenu();
       else if (this.room) this.showLobby();
       else this.showMenu();
-    });
+    };
+    const rematch = () => {
+      if (local) this.startLocal();
+      else this.conn?.send({ t: 'rematch' });
+    };
+    ui.showResults(v.fighters, v.winnerTeam, this.match.localId, { rematch, back, backLabel: local ? 'Menu' : 'Retour au salon' });
+    if (!local && this.room) {
+      ui.setRematchVotes(this.room.rematch.length, this.room.players.filter((p) => p.connected).length, false);
+    }
   }
 
   private stopMatch() {

@@ -9,6 +9,7 @@ import { consume } from '../engine/buffer';
 import { throwGrapple, canThrow } from '../grapple/grapple';
 import type { AttackDef, AttackSlot } from './types';
 import { attackTotal } from './types';
+import { heldMelee } from '../items';
 
 const SLOT_BUTTONS: [AttackSlot, number][] = [
   ['medium', Btn.Medium],
@@ -49,8 +50,9 @@ export function attackPhase(f: Fighter): AttackPhase | null {
 export function attackRect(f: Fighter): Rect | null {
   if (!f.attack) return null;
   const hb = getCharacter(f.charId).attacks[f.attack].hitbox;
-  const x = f.facing === 1 ? f.x + hb.x : f.x - hb.x - hb.w;
-  return { x, y: f.y + hb.y, w: hb.w, h: hb.h };
+  const w = hb.w + (heldMelee(f)?.reach ?? 0);
+  const x = f.facing === 1 ? f.x + hb.x : f.x - hb.x - w;
+  return { x, y: f.y + hb.y - (w > hb.w ? 2 : 0), w, h: hb.h + (w > hb.w ? 4 : 0) };
 }
 
 /** Lance l'attaque demandée via le buffer si possible. */

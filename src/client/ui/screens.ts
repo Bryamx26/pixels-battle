@@ -5,6 +5,8 @@ import type { RoomInfo } from '../../shared/net/protocol';
 import type { Fighter } from '../../shared/characters/fighter';
 import { SLOT_COLORS, TEAM_COLORS } from '../render/palette';
 import { escapeHtml } from './hud';
+import type { ButtonName } from '../../shared/input';
+import { ACTIONS, bind, getBindings, inputLabel, onBindingsChange, resetBindings, unbind } from '../input/controls';
 
 const root = () => document.getElementById('screens')!;
 
@@ -25,28 +27,134 @@ const options = (items: Record<string, { name?: string; label?: string }>, selec
     .map(([id, v]) => `<option value="${id}" ${id === selected ? 'selected' : ''}>${escapeHtml(v.name ?? v.label ?? id)}</option>`)
     .join('');
 
-const CONTROLS_HTML = `
+/** Aide des contrôles, générée à partir des liaisons actuelles. */
+function controlsHelp(): string {
+  const b = getBindings();
+  const keys = (id: keyof typeof b, n = 2) =>
+    b[id].filter((c) => !c.startsWith('Pad:')).slice(0, n).map(inputLabel).map(escapeHtml).join(' / ') || '—';
+  return `
 <details>
   <summary>Contrôles</summary>
   <div class="controls">
-    <kbd>A / D</kbd><span>Déplacement (Q / D en AZERTY)</span>
-    <kbd>Espace</kbd><span>Saut / double saut · pendant le grappin : lâcher en gardant l'élan</span>
-    <kbd>S</kbd><span>Chute rapide · traverser une plateforme fine</span>
-    <kbd>Clic gauche</kbd><span>Attaque rapide (enchaîne jusqu'à 3)</span>
-    <kbd>K</kbd><span>Coup de pied (attaque moyenne)</span>
-    <kbd>Clic droit</kbd><span>Kunai-grappin vers le curseur</span>
-    <kbd>F / molette</kbd><span>Lancer l'objet tenu vers le curseur</span>
-    <kbd>Shift</kbd><span>Garde (au bon moment = parade)</span>
-    <kbd>E</kbd><span>Dash / esquive</span>
+    <kbd>${keys('Left', 1)} / ${keys('Right', 1)}</kbd><span>Déplacement</span>
+    <kbd>${keys('Up', 1)}</kbd><span>Saut / double saut · pendant le grappin : lâcher en gardant l'élan</span>
+    <kbd>${keys('Down', 1)}</kbd><span>Chute rapide · traverser une plateforme fine</span>
+    <kbd>${keys('Light', 1)}</kbd><span>Attaque rapide (enchaîne jusqu'à 3)</span>
+    <kbd>${keys('Medium', 1)}</kbd><span>Coup de pied (attaque moyenne)</span>
+    <kbd>${keys('Grapple', 1)}</kbd><span>Kunai-grappin vers le curseur</span>
+    <kbd>${keys('Throw')}</kbd><span>Lancer l'objet tenu vers le curseur</span>
+    <kbd>${keys('Guard', 1)}</kbd><span>Garde (au bon moment = parade)</span>
+    <kbd>${keys('Dash', 1)}</kbd><span>Dash / esquive</span>
     <kbd>Échap</kbd><span>Menu pause</span>
   </div>
-  <p class="hint">Les shurikens apparaissent dans l'arène : passe dessus pour en ramasser un (un seul à la fois), lance-le sur l'adversaire puis va le récupérer là où il tombe.</p>
+  <p class="hint">Manette : stick gauche pour bouger, stick droit pour viser (sinon le stick gauche), Start pour la pause.</p>
+  <p class="hint">Objets à ramasser (un seul à la fois) : shuriken (rapide, se récupère), bombe (explose en zone), épée (coups plus longs et plus forts, se brise après 6 coups, peut aussi se lancer).</p>
 </details>`;
+}
+
+/** Écran de réglage des commandes : clic sur une touche pour la retirer, « + » pour en ajouter une. */
+export function showControls(onBack: () => void): void {
+  let capturing: ButtonName | null = null;
+  let stopCapture: (() => void) | null = null;
+
+  const render = () => {
+    const b = getBindings();
+    const rows = ACTIONS.map(
+      ({ id, label }) => `<div class="bind-row">
+        <span class="bind-label">${escapeHtml(label)}</span>
+        <span class="bind-keys">${b[id]
+          .map((c) => `<button class="chip" data-action="${id}" data-code="${escapeHtml(c)}" title="Retirer">${escapeHtml(inputLabel(c))} ✕</button>`)
+          .join('')}
+          <button class="chip add${capturing === id ? ' wait' : ''}" data-add="${id}">${capturing === id ? 'Appuie sur une touche…' : '+'}</button>
+        </span>
+      </div>`,
+    ).join('');
+    const el = mount(
+      `<h2>Commandes</h2>
+       <p class="hint">Clavier, souris ou manette. Clique sur une entrée pour la retirer, sur « + » puis appuie sur la touche à ajouter (Échap annule).</p>
+       <div class="bindings">${rows}</div>
+       <div class="row"><button id="back">Retour</button><button id="reset" class="secondary">Réinitialiser</button></div>`,
+      'overlay',
+    );
+    el.querySelectorAll<HTMLButtonElement>('[data-code]').forEach((btn) => {
+      btn.onclick = () => unbind(btn.dataset.action as ButtonName, btn.dataset.code!);
+    });
+    el.querySelectorAll<HTMLButtonElement>('[data-add]').forEach((btn) => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        startCapture(btn.dataset.add as ButtonName);
+      };
+    });
+    el.querySelector<HTMLButtonElement>('#reset')!.onclick = () => resetBindings();
+    el.querySelector<HTMLButtonElement>('#back')!.onclick = () => {
+      stopCapture?.();
+      off();
+      onBack();
+    };
+  };
+
+  /** Attend la prochaine touche, le prochain clic ou bouton de manette. */
+  const startCapture = (action: ButtonName) => {
+    stopCapture?.();
+    capturing = action;
+    document.body.dataset.capturing = '1';
+    render();
+    const done = (code: string | null) => {
+      stopCapture?.();
+      if (code) bind(action, code);
+      else render();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      done(e.code === 'Escape' ? null : `Key:${e.code}`);
+    };
+    const onMouse = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      done(`Mouse:${e.button}`);
+    };
+    const noMenu = (e: Event) => e.preventDefault();
+    // Boutons déjà enfoncés au début de la capture : ignorés jusqu'au relâchement.
+    const initial = new Set<number>();
+    const pad0 = [...(navigator.getGamepads?.() ?? [])].find((p) => p?.connected);
+    pad0?.buttons.forEach((btn, i) => btn.pressed && initial.add(i));
+    let raf = 0;
+    const pollPad = () => {
+      const gp = [...(navigator.getGamepads?.() ?? [])].find((p) => p?.connected);
+      if (gp) {
+        for (let i = 0; i < gp.buttons.length; i++) {
+          if (!gp.buttons[i].pressed) initial.delete(i);
+          else if (!initial.has(i) && i !== 9) return done(`Pad:${i}`);
+        }
+      }
+      raf = requestAnimationFrame(pollPad);
+    };
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('mousedown', onMouse, true);
+    window.addEventListener('contextmenu', noMenu, true);
+    raf = requestAnimationFrame(pollPad);
+    stopCapture = () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('mousedown', onMouse, true);
+      // Le menu contextuel d'un clic droit arrive après le mousedown.
+      setTimeout(() => window.removeEventListener('contextmenu', noMenu, true), 300);
+      cancelAnimationFrame(raf);
+      delete document.body.dataset.capturing;
+      capturing = null;
+      stopCapture = null;
+    };
+  };
+
+  const off = onBindingsChange(render);
+  render();
+}
 
 export interface MenuActions {
   create(name: string, mode: GameMode, arenaId: string): void;
   join(name: string, code: string): void;
   training(name: string, arenaId: string, charId: string, level: 'dummy' | 'easy'): void;
+  controls(name: string): void;
 }
 
 export function showMenu(a: MenuActions, defaults: { name: string; code?: string }): void {
@@ -70,7 +178,8 @@ export function showMenu(a: MenuActions, defaults: { name: string; code?: string
       <select id="tlevel"><option value="easy">CPU facile</option><option value="dummy">Mannequin immobile</option></select>
     </div>
     <div class="row"><button id="train" class="secondary">S'entraîner</button></div>
-    ${CONTROLS_HTML}
+    <div class="row"><button id="controls" class="secondary">Commandes</button></div>
+    ${controlsHelp()}
   `);
   const $ = <T extends HTMLElement>(id: string) => el.querySelector<T>('#' + id)!;
   const name = () => $<HTMLInputElement>('name').value.trim() || 'Ninja';
@@ -83,6 +192,7 @@ export function showMenu(a: MenuActions, defaults: { name: string; code?: string
   $('code').onkeydown = (e) => {
     if ((e as KeyboardEvent).key === 'Enter') join();
   };
+  $('controls').onclick = () => a.controls(name());
   $('train').onclick = () =>
     a.training(name(), $<HTMLSelectElement>('arena').value, $<HTMLSelectElement>('tchar').value, $<HTMLSelectElement>('tlevel').value as 'dummy' | 'easy');
 }
@@ -130,7 +240,8 @@ export function showLobby(room: RoomInfo, me: string, a: LobbyActions): void {
       <button id="leave" class="danger">Quitter</button>
     </div>
     ${host && !canStart ? `<p class="hint">Il faut ${mode.minPlayers} joueur(s) minimum.</p>` : ''}
-    ${CONTROLS_HTML}
+    <div class="row"><button id="controls" class="secondary">Commandes</button></div>
+    ${controlsHelp()}
   `);
   const $ = <T extends HTMLElement>(sel: string) => el.querySelector<T>(sel);
   $('#copy')!.onclick = async () => {
@@ -156,8 +267,7 @@ export function showResults(
   fighters: Fighter[],
   winnerTeam: number | null,
   localId: string,
-  label: string,
-  onContinue: () => void,
+  a: { rematch: () => void; back: () => void; backLabel: string },
 ): void {
   const me = fighters.find((f) => f.id === localId);
   const outcome = winnerTeam === null ? 'draw' : me && me.team === winnerTeam ? 'win' : 'lose';
@@ -172,22 +282,35 @@ export function showResults(
   const el = mount(
     `<div class="result-title ${outcome === 'win' ? 'win' : 'lose'}">${title}</div>
      <table class="stats"><tr><th>Joueur</th><th>KO</th><th>Chutes</th><th>Vies</th></tr>${rows}</table>
-     <div class="row"><button id="cont">${escapeHtml(label)}</button></div>`,
+     <div class="row"><button id="rematch">Revanche</button><button id="back" class="secondary">${escapeHtml(a.backLabel)}</button></div>
+     <p class="hint" id="rematch-status"></p>`,
     'overlay',
   );
-  el.querySelector<HTMLButtonElement>('#cont')!.onclick = onContinue;
+  el.querySelector<HTMLButtonElement>('#rematch')!.onclick = a.rematch;
+  el.querySelector<HTMLButtonElement>('#back')!.onclick = a.back;
 }
 
-export function showPause(onResume: () => void, onQuit: () => void): void {
+/** Avancement du vote de revanche (en ligne). */
+export function setRematchVotes(votes: number, players: number, mine: boolean): void {
+  const btn = document.querySelector<HTMLButtonElement>('#rematch');
+  const status = document.getElementById('rematch-status');
+  if (!btn || !status) return;
+  btn.textContent = votes ? `Revanche (${votes}/${players})` : 'Revanche';
+  btn.disabled = mine;
+  status.textContent = mine ? 'En attente des autres joueurs…' : votes ? 'Un joueur veut sa revanche !' : '';
+}
+
+export function showPause(onResume: () => void, onQuit: () => void, onControls: () => void): void {
   const el = mount(
     `<h2>Pause</h2>
      <p class="hint">En ligne, le combat continue pendant la pause.</p>
-     <div class="row"><button id="resume">Reprendre</button><button id="quit" class="danger">Quitter le combat</button></div>
-     ${CONTROLS_HTML}`,
+     <div class="row"><button id="resume">Reprendre</button><button id="controls" class="secondary">Commandes</button><button id="quit" class="danger">Quitter le combat</button></div>
+     ${controlsHelp()}`,
     'overlay',
   );
   el.querySelector<HTMLButtonElement>('#resume')!.onclick = onResume;
   el.querySelector<HTMLButtonElement>('#quit')!.onclick = onQuit;
+  el.querySelector<HTMLButtonElement>('#controls')!.onclick = onControls;
 }
 
 let toastTimer = 0;

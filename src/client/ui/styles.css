@@ -198,3 +198,23 @@ table.stats td:first-child, table.stats th:first-child { text-align: left; }
 }
 #toast.show { display: block; }
 #toast.info { background: var(--panel-2); }
+
+/* Écran « Commandes » */
+.bindings { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; max-height: 55vh; overflow-y: auto; }
+.bind-row { display: grid; grid-template-columns: 170px 1fr; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.bind-label { color: var(--muted); font-size: 13px; }
+.bind-keys { display: flex; flex-wrap: wrap; gap: 5px; }
+button.chip {
+  font-family: 'Silkscreen', var(--pixel);
+  font-size: 11px;
+  padding: 5px 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  box-shadow: 2px 2px 0 #000;
+}
+button.chip:hover { background: var(--danger); }
+button.chip.add { background: transparent; border: 1px dashed var(--line); box-shadow: none; color: var(--muted); }
+button.chip.add:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
+button.chip.add.wait { border-color: var(--accent); color: var(--accent); animation: blink 0.8s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0.4; } }
+@media (max-width: 560px) { .bind-row { grid-template-columns: 1fr; } }

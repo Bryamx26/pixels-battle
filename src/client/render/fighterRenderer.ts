@@ -1,11 +1,11 @@
 import type { Fighter } from '../../shared/characters/fighter';
 import { bodyCenter, handPos, GUARD_MAX } from '../../shared/characters/fighter';
 import { getCharacter } from '../../shared/characters';
-import { attackPhase } from '../../shared/combat/attack';
+import { attackPhase, attackTiming } from '../../shared/combat/attack';
 import { ring } from './arenaRenderer';
 import { shade } from './palette';
 import { drawText } from './pixelFont';
-import { drawItemIcon } from './itemRenderer';
+import { drawHeldItem, drawItemIcon } from './itemRenderer';
 import { getSpriteSheet } from './sprites/spriteSheets';
 import { drawSpriteFighter } from './sprites/spriteFighter';
 
@@ -103,8 +103,8 @@ export function drawFighter(ctx: CanvasRenderingContext2D, f: Fighter, o: Fighte
   // Personnage avec planche de sprites : on la dessine, puis les effets communs.
   const sheet = ch.look.sprite ? getSpriteSheet(ch.look.sprite) : null;
   if (sheet) {
-    if (f.heldItem) drawItemIcon(ctx, X - s * 5, Y - 11, o.time, white);
     drawSpriteFighter(ctx, sheet, f, o.time, white);
+    if (f.heldItem) drawHeldItem(ctx, f.heldItem, handPos(f), f.facing, o.time, swingProgress(f), white);
     ctx.globalAlpha = 1;
     drawOverlays(ctx, f, X, Y, o.time);
     return;
@@ -236,7 +236,7 @@ export function drawFighter(ctx: CanvasRenderingContext2D, f: Fighter, o: Fighte
     P(-4 - i * 2 + lean, -20 + by + wave + drop, 2, 1, i === 3 ? shade(scarf, -0.2) : scarf);
   }
   // Objet tenu, accroché dans le dos.
-  if (f.heldItem) drawItemIcon(ctx, X - s * 6, Y - 13 + by, o.time, white);
+  if (f.heldItem) drawItemIcon(ctx, f.heldItem, X - s * 6, Y - 13 + by, s, o.time, white);
   // Bras avant.
   if (armF) {
     P(armF[0] + lean, armF[1] + by, armF[2], armF[3], look.trim);
@@ -298,4 +298,11 @@ function drawSlash(ctx: CanvasRenderingContext2D, f: Fighter, X: number, Y: numb
     ctx.fillRect(Math.round(px), Math.round(py), 2, 1);
     if (f.attack !== 'light') ctx.fillRect(Math.round(px - s * 2), Math.round(py), 1, 1);
   }
+}
+
+/** Avancement du geste d'attaque (0..1) pour animer l'arme tenue, null hors attaque. */
+function swingProgress(f: Fighter): number | null {
+  if (f.action !== 'attack' || !f.attack) return null;
+  const t = attackTiming(f, getCharacter(f.charId).attacks[f.attack]);
+  return Math.min(1, Math.max(0, (f.actionTicks - t.startup + 3) / (t.active + 4)));
 }

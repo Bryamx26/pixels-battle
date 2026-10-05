@@ -1,5 +1,5 @@
 import { Btn, encodeAim } from '../input';
-import type { ItemState } from '../items';
+import { getItemType, type ItemState } from '../items';
 import type { ArenaDef } from '../arenas/types';
 import { isAlive, type Fighter } from '../characters/fighter';
 
@@ -41,7 +41,10 @@ export class Bot {
     const dist = Math.abs(dx);
 
     // Objets : lancer sur l'adversaire, ou aller chercher le plus proche.
-    if (me.heldItem && dist < 220 && this.t % 30 === 0) {
+    // L'épée se garde pour frapper au contact ; on ne la lance que de loin.
+    const melee = me.heldItem ? getItemType(me.heldItem)?.melee : null;
+    const throwRange = melee ? dist > 120 && dist < 220 : me.heldItem === 'bomb' ? dist > 40 && dist < 200 : dist < 220;
+    if (me.heldItem && throwRange && this.t % 30 === 0) {
       return Btn.Throw | encodeAim(Math.atan2(target.y - me.y, target.x - me.x));
     }
     const loot = !me.heldItem && items.find((i) => i.phase === 'ground' && Math.abs(i.x - me.x) < 160 && Math.abs(i.y - me.y) < 60);
@@ -56,7 +59,7 @@ export class Bot {
     // Garde quand l'adversaire prépare une attaque proche.
     if (target.action === 'attack' && dist < 34 && this.plan === 0) return Btn.Guard;
 
-    if (dist > 26) {
+    if (dist > (melee ? 34 : 26)) {
       b |= dx > 0 ? Btn.Right : Btn.Left;
       if (target.y < me.y - 30 && me.grounded && this.t % 40 === 0) b |= Btn.Up;
       if (dist > 120 && this.plan === 1 && me.grappleCooldown === 0 && this.t % 20 === 0) b |= Btn.Grapple;
