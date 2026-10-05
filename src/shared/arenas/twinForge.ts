@@ -21,6 +21,13 @@ export const twinForge: ArenaDef = {
     { x: 125, y: 105 },
     { x: 355, y: 105 },
   ],
+  itemSpawns: [
+    { x: 240, y: 95 },
+    { x: 125, y: 70 },
+    { x: 355, y: 70 },
+    { x: 90, y: 150 },
+    { x: 390, y: 150 },
+  ],
   theme: {
     skyTop: '#1a0f0f',
     skyBottom: '#7a2e1a',

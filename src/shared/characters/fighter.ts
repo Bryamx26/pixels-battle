@@ -83,6 +83,8 @@ export interface Fighter {
   dashCooldown: number;
   grapple: GrappleState | null;
   grappleCooldown: number;
+  /** Objet tenu (id de type), un seul à la fois. */
+  heldItem: string | null;
 
   /** Buffer d'entrées : les appuis restent valides quelques ticks. */
   bufBtns: number;
@@ -141,6 +143,7 @@ export function createFighter(s: FighterSpawn, spawn: { x: number; y: number }, 
     dashCooldown: 0,
     grapple: null,
     grappleCooldown: 0,
+    heldItem: null,
     bufBtns: 0,
     bufTicks: 0,
     prevButtons: 0,

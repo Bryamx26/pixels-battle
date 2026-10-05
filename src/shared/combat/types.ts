@@ -1,6 +1,6 @@
 import type { Rect } from '../math';
 
-export type AttackSlot = 'light' | 'medium' | 'heavy';
+export type AttackSlot = 'light' | 'medium';
 
 /**
  * Définition data-driven d'une attaque. Les durées sont en ticks (1/60 s).

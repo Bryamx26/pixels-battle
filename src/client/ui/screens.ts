@@ -30,18 +30,17 @@ const CONTROLS_HTML = `
   <summary>Contrôles</summary>
   <div class="controls">
     <kbd>A / D</kbd><span>Déplacement (Q / D en AZERTY)</span>
-    <kbd>W</kbd><span>Saut / double saut (Z en AZERTY)</span>
+    <kbd>Espace</kbd><span>Saut / double saut · pendant le grappin : lâcher en gardant l'élan</span>
     <kbd>S</kbd><span>Chute rapide · traverser une plateforme fine</span>
-    <kbd>J</kbd><span>Attaque légère (enchaîne jusqu'à 3)</span>
-    <kbd>K</kbd><span>Attaque moyenne (coup de pied)</span>
-    <kbd>L</kbd><span>Attaque lourde (chargée, risquée)</span>
+    <kbd>Clic gauche</kbd><span>Attaque rapide (enchaîne jusqu'à 3)</span>
+    <kbd>K</kbd><span>Coup de pied (attaque moyenne)</span>
+    <kbd>Clic droit</kbd><span>Kunai-grappin vers le curseur</span>
+    <kbd>F / molette</kbd><span>Lancer l'objet tenu vers le curseur</span>
     <kbd>Shift</kbd><span>Garde (au bon moment = parade)</span>
-    <kbd>E</kbd><span>Kunai-grappin (devant)</span>
-    <kbd>E + dir.</kbd><span>Grappin dans 8 directions</span>
-    <kbd>Espace</kbd><span>Dash / esquive (au sol et en l'air)</span>
+    <kbd>E</kbd><span>Dash / esquive</span>
     <kbd>Échap</kbd><span>Menu pause</span>
   </div>
-  <p class="hint">Astuces : grappin sur un ennemi → il est tiré vers toi, enchaîne avec J. Pendant la traction vers une plateforme, W = saut « fronde » qui garde l'élan.</p>
+  <p class="hint">Les shurikens apparaissent dans l'arène : passe dessus pour en ramasser un (un seul à la fois), lance-le sur l'adversaire puis va le récupérer là où il tombe.</p>
 </details>`;
 
 export interface MenuActions {

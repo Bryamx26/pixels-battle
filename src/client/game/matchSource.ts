@@ -3,10 +3,12 @@ import type { Fighter } from '../../shared/characters/fighter';
 import type { GameEvent } from '../../shared/engine/events';
 import type { MatchStatus } from '../../shared/engine/world';
 import type { GameMode } from '../../shared/engine/rules';
+import type { ItemState } from '../../shared/items';
 
 /** Ce que le rendu affiche pour une image. */
 export interface MatchView {
   fighters: Fighter[];
+  items: ItemState[];
   status: MatchStatus;
   countdown: number;
   winnerTeam: number | null;

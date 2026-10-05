@@ -25,7 +25,7 @@ export class LocalMatch implements MatchSource {
 
   tick(buttons: number): void {
     for (const f of this.world.state.fighters) this.prev.set(f.id, { x: f.x, y: f.y });
-    this.world.step({ local: buttons, cpu: this.bot.input(this.world.state.fighters, this.arena) });
+    this.world.step({ local: buttons, cpu: this.bot.input(this.world.state.fighters, this.arena, this.world.state.items) });
   }
 
   view(alpha: number): MatchView {
@@ -35,7 +35,7 @@ export class LocalMatch implements MatchSource {
       if (!p || Math.hypot(p.x - f.x, p.y - f.y) > 48) return f;
       return { ...f, x: lerp(p.x, f.x, alpha), y: lerp(p.y, f.y, alpha) };
     });
-    return { fighters, status: s.status, countdown: s.countdown, winnerTeam: s.winnerTeam, mode: s.mode };
+    return { fighters, items: s.items, status: s.status, countdown: s.countdown, winnerTeam: s.winnerTeam, mode: s.mode };
   }
 
   drainEvents(): GameEvent[] {

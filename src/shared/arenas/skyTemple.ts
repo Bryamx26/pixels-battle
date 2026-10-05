@@ -20,6 +20,13 @@ export const skyTemple: ArenaDef = {
     { x: 175, y: 140 },
     { x: 305, y: 140 },
   ],
+  itemSpawns: [
+    { x: 240, y: 60 },
+    { x: 175, y: 110 },
+    { x: 305, y: 110 },
+    { x: 125, y: 160 },
+    { x: 355, y: 160 },
+  ],
   theme: {
     skyTop: '#2b1f5c',
     skyBottom: '#f08a5d',

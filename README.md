@@ -26,35 +26,36 @@ Tests de la simulation : `npm test`. Vérification des types : `npm run typechec
 
 ## Contrôles
 
-| Touche | Action |
+| Entrée | Action |
 |---|---|
 | A / D (Q / D en AZERTY), ← → | Déplacement |
-| W (Z en AZERTY), ↑ | Saut, double saut |
+| Espace (ou W / ↑) | Saut, double saut · pendant le grappin : lâcher en gardant l'élan |
 | S, ↓ | Chute rapide · traverser une plateforme fine |
-| J | Attaque légère (chaîne jusqu'à 3) |
-| K | Attaque moyenne |
-| L | Attaque lourde (chargée) |
+| Clic gauche (ou J) | Attaque rapide (chaîne jusqu'à 3) |
+| K | Coup de pied (attaque moyenne) |
+| Clic droit | Kunai-grappin vers le curseur |
+| F ou clic molette | Lancer l'objet tenu vers le curseur |
 | Shift | Garde (levée au bon moment = parade) |
-| E | Kunai-grappin devant soi |
-| E + direction | Grappin dans 8 directions |
-| Espace | Dash / esquive (sol et air, invulnérable au début) |
+| E | Dash / esquive (sol et air, invulnérable au début) |
 | Échap | Pause / quitter |
 
 Les touches sont lues par position physique (`KeyboardEvent.code`) et se reconfigurent dans
-`src/client/input/keyboard.ts` (`DEFAULT_BINDINGS`).
+`src/client/input/keyboard.ts` (`DEFAULT_BINDINGS` et `MOUSE_BINDINGS`). La visée souris est
+encodée dans les entrées envoyées au serveur (256 directions), le serveur reste autoritaire.
 
 ## Gameplay
 
 - **Dégâts en %** : plus le pourcentage monte, plus l'éjection est forte. Sortir des limites de l'arène = une vie perdue (3 vies). Dernière équipe en vie = victoire.
-- **Attaques** : légère (rapide, faible), moyenne (portée, fente), lourde (préparation visible, gros knockback, punissable).
-- **Combos** : après un coup réussi on peut annuler dans une autre attaque (L→L→L, L→M, M→L…), dans le grappin ou dans un saut. Une attaque enchaînée démarre 40 % plus vite.
+- **Attaques** : rapide au clic gauche (faible, enchaînable) et coup de pied (portée, fente). Pas d'attaque lourde.
+- **Combos** : après un coup réussi on peut annuler dans une autre attaque (rapide→rapide→rapide, rapide→pied, pied→rapide), dans le grappin ou dans un saut. Une attaque enchaînée démarre 40 % plus vite.
 - **Garde** : jauge qui se vide en la maintenant et en bloquant ; à zéro, garde brisée (étourdi). Levée juste avant le coup = **parade** : l'attaquant est étourdi.
-- **Grappin** (portée limitée, temps de recharge ~1 s) :
+- **Grappin** (clic droit, visé à la souris, portée limitée, temps de recharge ~1 s) :
   - sur un **ennemi** : petits dégâts, il est tiré vers toi puis reste brièvement étourdi → enchaîne ;
   - sur une **plateforme** : tu es hissé sur son bord (récupération) ;
   - sur un **anneau** : tu es tiré vers lui (anneaux placés hors de l'arène pour revenir) ;
-  - pendant la traction : W = saut « fronde » qui garde l'élan, une attaque l'annule en gardant la vitesse ;
+  - pendant la traction : Espace lâche la chaîne en gardant toute l'inertie, une attaque l'annule en gardant la vitesse ;
   - bloqué par la garde.
+- **Objets** : des shurikens apparaissent régulièrement dans l'arène (2 objets max en jeu). On en ramasse un en passant dessus, **un seul à la fois**. Lancé vers le curseur, il inflige dégâts et éjection (bloqué par la garde), puis retombe là où il a touché : il faut aller le rechercher.
 - **Personnages** : Kaze (équilibré, mobile) et Tetsu (lourd, plus lent, frappe plus fort).
 - **Arènes** : Temple Céleste, Forge Jumelle, Ruines Flottantes.
 - **Modes** : 1v1, 2v2, chacun pour soi (jusqu'à 4).
@@ -69,7 +70,8 @@ src/
     characters/        état d'un combattant, machine à états (controller), définitions Kaze / Tetsu
     combat/            attaques data-driven, hitbox, garde / parade, résolution des coups
     grapple/           kunai (vol, accroche, zip) et accroche d'ennemis (traction)
-    arenas/            une arène = un fichier de données
+    items/             classe ItemType (comportement d'un objet), Shuriken, système d'objets (apparition, ramassage, lancer, impact)
+    arenas/            une arène = un fichier de données (plateformes, anneaux, points d'apparition des objets)
     ai/                bot d'entraînement
     net/protocol.ts    messages client ↔ serveur
   server/
@@ -95,4 +97,5 @@ src/
 
 - **Personnage** : copier `src/shared/characters/kaze.ts`, ajuster les stats / attaques / couleurs, l'ajouter dans `characters/index.ts`.
 - **Arène** : copier `src/shared/arenas/skyTemple.ts`, définir plateformes, anneaux, spawns, couleurs, l'ajouter dans `arenas/index.ts`.
+- **Objet** : créer une sous-classe de `ItemType` (voir `src/shared/items/shuriken.ts`) en définissant dégâts, éjection, vitesse, gravité ; surcharger `launch` / `fly` pour un comportement spécial ; l'ajouter dans `items/index.ts`.
 - **Mode** : `MODES` et `teamForSlot` dans `src/shared/engine/rules.ts`.

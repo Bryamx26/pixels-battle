@@ -11,7 +11,6 @@ import type { AttackDef, AttackSlot } from './types';
 import { attackTotal } from './types';
 
 const SLOT_BUTTONS: [AttackSlot, number][] = [
-  ['heavy', Btn.Heavy],
   ['medium', Btn.Medium],
   ['light', Btn.Light],
 ];

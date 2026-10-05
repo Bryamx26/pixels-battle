@@ -40,5 +40,7 @@ export interface ArenaDef {
   anchors: Anchor[];
   /** Positions des pieds au spawn, indexées par slot de joueur. */
   spawns: { x: number; y: number }[];
+  /** Points d'apparition des objets (ils tombent ensuite sur la plateforme dessous). */
+  itemSpawns: { x: number; y: number }[];
   theme: ArenaTheme;
 }

@@ -44,6 +44,7 @@ export function knockOut(f: Fighter, fighters: Fighter[], events: GameEvent[]): 
   f.action = 'dead';
   f.attack = null;
   f.grapple = null;
+  f.heldItem = null;
   f.hookedBy = null;
   f.respawnTimer = RESPAWN_TICKS;
   f.vx = 0;

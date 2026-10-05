@@ -1,15 +1,16 @@
 import type { Fighter } from '../../shared/characters/fighter';
 import { bodyCenter, handPos, GUARD_MAX } from '../../shared/characters/fighter';
 import { getCharacter } from '../../shared/characters';
-import { attackPhase, attackTiming } from '../../shared/combat/attack';
+import { attackPhase } from '../../shared/combat/attack';
 import { ring } from './arenaRenderer';
 import { shade } from './palette';
 import { drawText } from './pixelFont';
+import { drawItemIcon } from './itemRenderer';
 
 type Px = (dx: number, dy: number, w: number, h: number, color: string) => void;
 
 export type Anim =
-  | 'idle' | 'run' | 'jump' | 'fall' | 'light' | 'medium' | 'heavy' | 'guard' | 'throw'
+  | 'idle' | 'run' | 'jump' | 'fall' | 'light' | 'medium' | 'guard' | 'throw'
   | 'zip' | 'hooked' | 'hurt' | 'dizzy' | 'dash';
 
 /** Choisit l'animation à partir de l'état de simulation. */
@@ -165,34 +166,6 @@ export function drawFighter(ctx: CanvasRenderingContext2D, f: Fighter, o: Fighte
         P(11, -12, 2, 4, '#1a1426');
       } else legs = [[-3, -7, 3, 7], [2, -9, 6, 3]];
       break;
-    case 'heavy':
-      if (phase === 'startup') {
-        by = 2;
-        lean = -1;
-        legs = [[-5, -6, 3, 6], [2, -6, 3, 6]];
-        armB = [-6, -22, 2, 7];
-        armF = [-3, -23, 2, 7];
-        // Charge visible : étincelles qui clignotent autour de la lame levée.
-        const timing = attackTiming(f, ch.attacks.heavy);
-        const k = f.actionTicks / timing.startup;
-        if (Math.floor(t / 2) % 2 === 0) {
-          P(-5, -27, 1, 1, '#ffffff');
-          P(-1, -26 - Math.round(k * 3), 1, 1, scarf);
-          P(-8, -24, 1, 1, scarf);
-        }
-        P(-4, -30, 2, 6, '#e6e6f0');
-      } else if (phase === 'active') {
-        lean = 2;
-        legs = [[-6, -7, 3, 7], [3, -7, 3, 7]];
-        armF = [3, -14, 9, 3];
-        P(12, -13, 8, 1, '#ffffff');
-        P(12, -14, 6, 1, '#e6e6f0');
-      } else {
-        by = 1;
-        legs = [[-6, -7, 3, 7], [3, -7, 3, 7]];
-        armF = [3, -11, 6, 2];
-      }
-      break;
     case 'guard':
       by = 1;
       armB = [1, -13, 4, 2];
@@ -250,6 +223,8 @@ export function drawFighter(ctx: CanvasRenderingContext2D, f: Fighter, o: Fighte
     const drop = Math.round((1 - speed) * i * 0.7) - (f.vy > 100 ? i : 0);
     P(-4 - i * 2 + lean, -20 + by + wave + drop, 2, 1, i === 3 ? shade(scarf, -0.2) : scarf);
   }
+  // Objet tenu, accroché dans le dos.
+  if (f.heldItem) drawItemIcon(ctx, X - s * 6, Y - 13 + by, o.time, white);
   // Bras avant.
   if (armF) {
     P(armF[0] + lean, armF[1] + by, armF[2], armF[3], look.trim);
@@ -287,7 +262,7 @@ export function drawFighter(ctx: CanvasRenderingContext2D, f: Fighter, o: Fighte
 
   // Arc de l'attaque pendant les frames actives.
   if (phase === 'active' && f.attack) {
-    drawSlash(ctx, f, X, Y, s, f.attack === 'heavy' ? scarf : '#ffffff');
+    drawSlash(ctx, f, X, Y, s, f.attack === 'medium' ? scarf : '#ffffff');
   }
 
 }

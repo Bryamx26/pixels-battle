@@ -1,6 +1,6 @@
 import { DT } from '../constants';
 import { segmentCircle, segmentRect } from '../math';
-import { inputDir } from '../input';
+import { decodeAim, inputDir } from '../input';
 import type { ArenaDef } from '../arenas/types';
 import { bodyCenter, handPos, type Fighter } from '../characters/fighter';
 import type { CharacterDef } from '../characters/types';
@@ -29,6 +29,8 @@ export const canThrow = (f: Fighter) => !f.grapple && f.grappleCooldown === 0;
 
 /** Direction de lancer : 8 directions, horizontale devant soi par défaut. */
 export function throwDirection(f: Fighter, buttons: number): { x: number; y: number } {
+  const aim = decodeAim(buttons);
+  if (aim) return aim; // visée souris
   const { dx, dy } = inputDir(buttons);
   if (dx === 0 && dy === 0) return { x: f.facing, y: 0 };
   const len = Math.hypot(dx, dy);
@@ -140,9 +142,8 @@ export function updateZip(f: Fighter, ch: CharacterDef): void {
     f.action = 'free';
     return;
   }
-  // Annulation par saut : on garde l'élan (mouvement avancé « fronde »).
+  // Saut (Espace) pendant la traction : on lâche la chaîne en gardant toute l'inertie.
   if (consume(f, Btn.Up)) {
-    f.vy = Math.min(f.vy * 0.5, 0) - ch.jumpVel * 0.85;
     f.action = 'free';
     g.phase = 'retract';
     return;
