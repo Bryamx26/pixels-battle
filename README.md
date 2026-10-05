@@ -21,6 +21,19 @@ npm start          # compile le client puis lance le serveur sur http://localhos
 Pour jouer avec quelqu'un hors de ton réseau, il faut héberger le serveur (Render, Fly.io, un VPS…)
 ou l'exposer temporairement (ex. `cloudflared tunnel --url http://localhost:3000`). Le port se règle avec `PORT=8080 npm start`.
 
+### Avec Docker
+
+```bash
+docker compose up -d --build     # http://localhost:3000
+# ou sans compose :
+docker build -t pixels-battle .
+docker run -d -p 3000:3000 --name pixels-battle pixels-battle
+```
+
+L'image (Node 22 Alpine, ~65 Mo compressée) contient le client compilé et le serveur, tourne en
+utilisateur non root et expose un healthcheck HTTP. Pour changer le port interne : `-e PORT=8080 -p 8080:8080`.
+Derrière un reverse proxy HTTPS (Caddy, Nginx, Traefik), penser à transmettre les WebSockets sur `/ws`.
+
 Développement avec rechargement à chaud : `npm run dev` (client Vite sur :5173, serveur sur :3000).
 Tests de la simulation : `npm test`. Vérification des types : `npm run typecheck`.
 
