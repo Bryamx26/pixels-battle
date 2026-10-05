@@ -56,7 +56,7 @@ encodée dans les entrées envoyées au serveur (256 directions), le serveur res
   - pendant la traction : Espace lâche la chaîne en gardant toute l'inertie, une attaque l'annule en gardant la vitesse ;
   - bloqué par la garde.
 - **Objets** : des shurikens apparaissent régulièrement dans l'arène (2 objets max en jeu). On en ramasse un en passant dessus, **un seul à la fois**. Lancé vers le curseur, il inflige dégâts et éjection (bloqué par la garde), puis retombe là où il a touché : il faut aller le rechercher.
-- **Personnages** : Kaze (équilibré, mobile) et Tetsu (lourd, plus lent, frappe plus fort).
+- **Personnages** : Kaze (tenue jaune) et Mizu (identique, tenue bleue), animés à partir de la planche de sprites `tools/sprites/ninja-sheet.png`.
 - **Arènes** : Temple Céleste, Forge Jumelle, Ruines Flottantes.
 - **Modes** : 1v1, 2v2, chacun pour soi (jusqu'à 4).
 
@@ -67,7 +67,7 @@ src/
   shared/              code exécuté à la fois par le serveur et le navigateur
     engine/            World (tick de simulation), règles (vies, victoire, modes), événements, buffer d'entrées
     physics/           intégration + collisions plateformes (solides / traversables)
-    characters/        état d'un combattant, machine à états (controller), définitions Kaze / Tetsu
+    characters/        état d'un combattant, machine à états (controller), définitions Kaze / Mizu
     combat/            attaques data-driven, hitbox, garde / parade, résolution des coups
     grapple/           kunai (vol, accroche, zip) et accroche d'ennemis (traction)
     items/             classe ItemType (comportement d'un objet), Shuriken, système d'objets (apparition, ramassage, lancer, impact)
@@ -82,7 +82,8 @@ src/
     game/              interface MatchSource, partie locale d'entraînement
     engine/            boucle à pas fixe
     input/             clavier → boutons
-    render/            rendu pixel art procédural (décor, personnages, effets, police bitmap, caméra)
+    render/            rendu pixel art (sprites des personnages, décor procédural, effets, police bitmap, caméra)
+    assets/            atlas de sprites générés (ninja-jaune.png, ninja-bleu.png)
     ui/                écrans (menu, salon, résultats, pause) et HUD
 ```
 
@@ -95,7 +96,8 @@ src/
 
 ### Ajouter du contenu
 
-- **Personnage** : copier `src/shared/characters/kaze.ts`, ajuster les stats / attaques / couleurs, l'ajouter dans `characters/index.ts`.
+- **Personnage** : copier `src/shared/characters/kaze.ts`, ajuster les stats / attaques, l'ajouter dans `characters/index.ts`. `look.sprite` choisit la planche de sprites (sinon rendu procédural).
+- **Sprites** : `python3 tools/sprites/extract.py` (pillow, numpy, scipy) découpe `tools/sprites/ninja-sheet.png`, nettoie la palette et régénère les atlas jaune/bleu et `src/client/render/sprites/ninjaAtlas.ts`. Pour une nouvelle couleur, ajouter une fonction de recoloration comme `to_blue`.
 - **Arène** : copier `src/shared/arenas/skyTemple.ts`, définir plateformes, anneaux, spawns, couleurs, l'ajouter dans `arenas/index.ts`.
 - **Objet** : créer une sous-classe de `ItemType` (voir `src/shared/items/shuriken.ts`) en définissant dégâts, éjection, vitesse, gravité ; surcharger `launch` / `fly` pour un comportement spécial ; l'ajouter dans `items/index.ts`.
 - **Mode** : `MODES` et `teamForSlot` dans `src/shared/engine/rules.ts`.

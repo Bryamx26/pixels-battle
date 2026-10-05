@@ -18,7 +18,7 @@ export class LocalMatch implements MatchSource {
     this.arena = getArena(arenaId);
     this.world = new World(arenaId, '1v1', [
       { id: 'local', name: 'Toi', charId, slot: 0, team: 0 },
-      { id: 'cpu', name: botLevel === 'dummy' ? 'Mannequin' : 'CPU', charId: charId === 'kaze' ? 'tetsu' : 'kaze', slot: 1, team: 1 },
+      { id: 'cpu', name: botLevel === 'dummy' ? 'Mannequin' : 'CPU', charId: charId === 'kaze' ? 'mizu' : 'kaze', slot: 1, team: 1 },
     ]);
     this.bot = new Bot('cpu', botLevel);
   }

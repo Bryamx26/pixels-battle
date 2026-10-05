@@ -6,6 +6,8 @@ import { ring } from './arenaRenderer';
 import { shade } from './palette';
 import { drawText } from './pixelFont';
 import { drawItemIcon } from './itemRenderer';
+import { getSpriteSheet } from './sprites/spriteSheets';
+import { drawSpriteFighter } from './sprites/spriteFighter';
 
 type Px = (dx: number, dy: number, w: number, h: number, color: string) => void;
 
@@ -98,6 +100,16 @@ export function drawFighter(ctx: CanvasRenderingContext2D, f: Fighter, o: Fighte
   const white = o.flash > 0 && o.flash % 2 === 1;
   ctx.globalAlpha = blink ? 0.35 : f.connected ? 1 : 0.5;
 
+  // Personnage avec planche de sprites : on la dessine, puis les effets communs.
+  const sheet = ch.look.sprite ? getSpriteSheet(ch.look.sprite) : null;
+  if (sheet) {
+    if (f.heldItem) drawItemIcon(ctx, X - s * 5, Y - 11, o.time, white);
+    drawSpriteFighter(ctx, sheet, f, o.time, white);
+    ctx.globalAlpha = 1;
+    drawOverlays(ctx, f, X, Y, o.time);
+    return;
+  }
+
   const P: Px = (dx, dy, w, h, color) => {
     ctx.fillStyle = white ? '#ffffff' : color;
     ctx.fillRect(s === 1 ? X + dx : X - dx - w, Y + dy, w, h);
@@ -109,7 +121,7 @@ export function drawFighter(ctx: CanvasRenderingContext2D, f: Fighter, o: Fighte
   const scarf = o.color;
   const anim = animOf(f);
   const t = o.time;
-  const wide = ch.width > 12 ? 1 : 0; // Tetsu est plus large
+  const wide = ch.width > 12 ? 1 : 0; // personnages plus larges
 
   let by = 0; // décalage vertical du haut du corps (accroupi > 0)
   let lean = 0; // décalage horizontal du haut du corps (vers l'avant > 0)
@@ -242,6 +254,17 @@ export function drawFighter(ctx: CanvasRenderingContext2D, f: Fighter, o: Fighte
   }
   ctx.globalAlpha = 1;
 
+  drawOverlays(ctx, f, X, Y, t);
+
+  // Arc de l'attaque pendant les frames actives.
+  if (phase === 'active' && f.attack) {
+    drawSlash(ctx, f, X, Y, s, f.attack === 'medium' ? scarf : '#ffffff');
+  }
+
+}
+
+/** Effets dessinés par-dessus le personnage, quel que soit son rendu. */
+function drawOverlays(ctx: CanvasRenderingContext2D, f: Fighter, X: number, Y: number, t: number): void {
   // Bulle de garde (couleur selon la jauge, blanche pendant la fenêtre parfaite).
   if (f.action === 'guard') {
     const c = bodyCenter(f);
@@ -259,12 +282,6 @@ export function drawFighter(ctx: CanvasRenderingContext2D, f: Fighter, o: Fighte
       ctx.fillRect(Math.round(X + Math.cos(a) * 7), Math.round(Y - 27 + Math.sin(a) * 2), 2, 2);
     }
   }
-
-  // Arc de l'attaque pendant les frames actives.
-  if (phase === 'active' && f.attack) {
-    drawSlash(ctx, f, X, Y, s, f.attack === 'medium' ? scarf : '#ffffff');
-  }
-
 }
 
 function drawSlash(ctx: CanvasRenderingContext2D, f: Fighter, X: number, Y: number, s: number, color: string) {

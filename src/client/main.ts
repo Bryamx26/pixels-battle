@@ -13,6 +13,9 @@ import { OnlineMatch } from './net/onlineMatch';
 import { Renderer } from './render/renderer';
 import { Hud } from './ui/hud';
 import * as ui from './ui/screens';
+import { preloadSpriteSheets } from './render/sprites/spriteSheets';
+
+preloadSpriteSheets();
 
 const NAME_KEY = 'pb.name';
 /** Délai entre la fin du combat et l'écran de victoire/défaite. */

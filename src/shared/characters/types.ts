@@ -42,5 +42,12 @@ export interface CharacterDef {
   attacks: Record<AttackSlot, AttackDef>;
   grapple: GrappleStats;
   /** Couleurs du sprite (le joueur reçoit en plus une couleur d'équipe). */
-  look: { body: string; trim: string; skin: string; scarf: string };
+  look: {
+    body: string;
+    trim: string;
+    skin: string;
+    scarf: string;
+    /** Planche de sprites (client) ; sans elle le personnage est dessiné en procédural. */
+    sprite?: string;
+  };
 }

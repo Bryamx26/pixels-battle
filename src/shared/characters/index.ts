@@ -1,12 +1,12 @@
 import type { CharacterDef } from './types';
 import { kaze } from './kaze';
-import { tetsu } from './tetsu';
+import { mizu } from './mizu';
 
 export type { CharacterDef, GrappleStats } from './types';
 
 export const CHARACTERS: Record<string, CharacterDef> = {
   [kaze.id]: kaze,
-  [tetsu.id]: tetsu,
+  [mizu.id]: mizu,
 };
 
 export const DEFAULT_CHARACTER = kaze.id;
